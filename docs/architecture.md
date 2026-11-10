@@ -6,72 +6,71 @@ The **Order-to-Cash (O2C) Revenue Leakage & Process Delay Tracker** is an enterp
 
 ---
 
-## Architectural Principles
+## 1. End-to-End Pipeline Flow
 
-1. **Clean Architecture & Separation of Concerns**:
-   - Master data (`account`, `quote`, `sales_order`) vs. fulfillment & settlement transactions (`shipment`, `invoice`, `payment`, `dispute`).
-   - Ground truth anomaly repository strictly isolated from operational schemas.
-2. **Event-Sourced State Transitions**:
-   - In accordance with audit compliance and process mining standards, historical entity state is **never overwritten**.
-   - Every mutation of an entity's status column automatically emits a status change to `o2c.status_event`.
-3. **12-Factor Configuration**:
-   - Environment-variable-driven configuration across services via standardized schema validation.
-4. **Zero Feature Leakage in Ground Truth**:
-   - `gt.ground_truth` contains no foreign key relationships to operational tables (`o2c.*`) so that feature-store queries and detector evaluations remain completely isolated from benchmark labels.
+```mermaid
+flowchart LR
+    A["Datagen (Python)<br/>Faker + NumPy Seeded"] -->|CSV Export| B["Data Manifests & Storage<br/>data/processed/"]
+    B -->|COPY Bulk Load| C["Supabase / PostgreSQL<br/>Schemas: o2c, gt"]
+    C -->|Rules SQL Execution| D["Detector Engine<br/>10 Detection Rules"]
+    D -->|Persist Findings| E["analytics.detector_findings"]
+    D -->|Evaluate vs gt.ground_truth| F["data/manifests/detector_eval.json"]
+    C -->|Analytical Views & Aging Fn| G["analytics.* Views"]
+    E & G --> H["Fastify API (TypeScript)<br/>Raw SQL with postgres client"]
+    H -->|Uniform JSON Envelope| I["React 18 + Vite Frontend<br/>Zustand + TanStack Query"]
+```
+
+1. **Synthetic Data Generator (`backend/pipeline/src/pipeline/datagen`)**:
+   - Seeded, deterministic generation across master entities (`account`, `quote`, `sales_order`) and transactions (`shipment`, `invoice`, `payment`, `dispute`, `status_event`).
+   - Clean baseline data generation followed by controlled anomaly injection with labels saved to `gt.ground_truth`.
+2. **Database Loader (`backend/pipeline/src/pipeline/loader.py`)**:
+   - High-throughput ingestion using PostgreSQL `COPY` inside transactions with `session_replication_role = replica`.
+3. **Anomaly Detector (`backend/pipeline/src/pipeline/detector`)**:
+   - Discrete rules running SQL queries against operational tables (`o2c.*`).
+   - Persists findings to `analytics.detector_findings` and evaluates against `gt.ground_truth`.
+4. **Analytical SQL Layer (`backend/db/migrations/0010_analytics_views.sql`)**:
+   - Parameterized aging function `analytics.fn_aging(p_cutoff DATE)`.
+   - Production views: `v_revenue_leakage`, `v_cycle_time_delays`, `v_unallocated_payments`, `v_open_disputes_vs_receivables`.
+5. **Backend API (`backend/api`)**:
+   - Fastify API using `postgres` client (tagged template literals, zero ORM).
+   - `@supabase/supabase-js` restricted to `src/modules/auth/service.ts` for credential verification only.
+   - Issues signed 8h JWTs in httpOnly, SameSite=Lax cookies (`o2c_session`).
+6. **Frontend (`frontend`)**:
+   - React 18, Vite, TypeScript strict, TanStack Query, Zustand, Recharts, Tailwind CSS. Zero Supabase SDK in browser.
 
 ---
 
-## High-Level Topology
+## 2. Role-Based Access Control (RBAC) Matrix
 
-```
-+-------------------------------------------------------------------------+
-|                              Presentation Layer                         |
-|                   frontend (React 18 + Vite + TypeScript)               |
-|                   - TanStack Query (Server State Cache)                 |
-|                   - Zustand (Session, UI & Filter Store)                |
-|                   - Tailwind CSS + Recharts Dashboard Visuals           |
-+------------------------------------+------------------------------------+
-                                     | REST / HTTPS
-                                     v
-+-------------------------------------------------------------------------+
-|                               API Service Layer                         |
-|                   backend/api (Fastify + Node.js + TypeScript)          |
-|                   - Modular domain route handlers                       |
-|                   - Zod schema validation & DTO serializing             |
-|                   - Pino structured logging                             |
-+------------------------------------+------------------------------------+
-                                     | PostgreSQL Connection Pool
-                                     v
-+-------------------------------------------------------------------------+
-|                               Database Layer                            |
-|                          PostgreSQL 15+ (Supabase)                      |
-|  +--------------------+  +--------------------+  +--------------------+  |
-|  |    Schema: o2c     |  |    Schema: gt      |  | Schema: analytics  |  |
-|  | - Operational core |  | - Ground Truth     |  | - AR Aging View    |  |
-|  | - status_event     |  | - Injected labels  |  | - Leakage Summary  |  |
-|  | - RLS enforcement  |  | - Isolated no FK   |  | - Cycle time view  |  |
-|  +--------------------+  +--------------------+  +--------------------+  |
-+-------------------+------------------------------------+----------------+
-                    ^                                    ^
-                    | Read Events & Tables               | Ingest & Seed
-+-------------------+--------------------+  +------------+----------------+
-|       backend/pipeline: detector       |  |   backend/pipeline: datagen |
-|       - Rule execution engine          |  |   - Deterministic synthetics|
-|       - Lead time & aging calculators  |  |   - Anomaly injector engine |
-|       - Precision/Recall benchmarking  |  |   - Seed loader & checksums |
-+----------------------------------------+  +-----------------------------+
-```
+| Role | Operational Records (`/records/:entity`) | Summary (`/analytics/summary`) | Aging & Delays (`/analytics/*`) | Leakage (`/analytics/leakage`) | Exceptions (`/exceptions`) | Evaluation (`/exceptions/evaluation`) |
+| :--- | :--- | :--- | :--- | :--- | :--- | :--- |
+| **`customer`** | Own account only | Forbidden (403) | Forbidden (403) | Forbidden (403) | Forbidden (403) | Forbidden (403) |
+| **`sales_ops`** | Full read | Allowed (200) | Allowed (200) | Allowed (200) | Forbidden (403) | Forbidden (403) |
+| **`support_agent`** | Full read | Allowed (200) | Allowed (200) | Forbidden (403) | Allowed (200) | Forbidden (403) |
+| **`analyst`** | Full read | Allowed (200) | Allowed (200) | Allowed (200) | Allowed (200) | Allowed (200) |
+| **`admin`** | Full read | Allowed (200) | Allowed (200) | Allowed (200) | Allowed (200) | Allowed (200) |
 
 ---
 
-## Role-Based Access Control Matrix
+## 3. Uniform API Response Envelope Specification
 
-The PostgreSQL layer implements fine-grained Row-Level Security (RLS) driven by `o2c.profiles`:
+Every endpoint returns a standard JSON envelope:
 
-| Role | Operational Read (`o2c.*`) | Operational Write (`o2c.*`) | Dispute Management | Ground Truth (`gt.*`) |
-| :--- | :--- | :--- | :--- | :--- |
-| **`customer`** | Own account records only | None | Create dispute | Forbidden |
-| **`sales_ops`** | Full | Quotes, Orders, Shipments, Invoices | Read-only | Forbidden |
-| **`support_agent`**| Full | None | Manage disputes | Forbidden |
-| **`analyst`** | Full | None | Read-only | Read-only |
-| **`admin`** | Full | Full | Full | Read & Write |
+### Success Response
+```json
+{
+  "ok": true,
+  "data": { ... }
+}
+```
+
+### Error Response
+```json
+{
+  "ok": false,
+  "error": {
+    "code": "FORBIDDEN",
+    "message": "Forbidden: insufficient permissions"
+  }
+}
+```

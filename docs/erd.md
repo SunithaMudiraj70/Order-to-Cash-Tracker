@@ -1,6 +1,6 @@
 # Entity Relationship Diagram (ERD) & Cardinality
 
-This document outlines the data model and structural relationships across the Order-to-Cash (O2C) revenue leakage and delay tracking system.
+This document outlines the data model and structural relationships across schemas `o2c`, `gt`, and `analytics`.
 
 ## Mermaid Entity Relationship Diagram
 
@@ -171,11 +171,21 @@ erDiagram
     GROUND_TRUTH {
         string gt_id PK "GT-XXXXXX"
         entity_type entity_type
-        string entity_id "No FK"
+        string entity_id "No FK to o2c"
         issue_type issue_type
         string expected_decision
         string injected_rule
         string notes
+    }
+
+    DETECTOR_FINDINGS {
+        string finding_id PK "FND-XXXXXX"
+        string entity_type
+        string entity_id
+        string issue_type
+        string severity
+        jsonb evidence
+        timestamptz detected_at
     }
 ```
 
@@ -202,4 +212,4 @@ erDiagram
 | `o2c.invoice` | `o2c.dispute` | `1 : 0..N` | `ON DELETE RESTRICT` | Invoices can receive one or more customer disputes |
 | Operational Tables | `o2c.status_event` | `1 : 0..N` | Immutable ledger, trigger-maintained | Capture all historical state transitions |
 | N/A | `gt.ground_truth` | Isolated | **Zero FKs to `o2c` schema** | Benchmark evaluation without feature leakage |
-
+| Detector Rules | `analytics.detector_findings` | N/A | Dedicated findings table | Output of discrete detection rule executions |

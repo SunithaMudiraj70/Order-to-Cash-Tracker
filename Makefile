@@ -1,6 +1,8 @@
+export PYTHONPATH := backend/pipeline/src
+
 .DEFAULT_GOAL := help
 
-.PHONY: help setup migrate reset-db gen-small gen-full load detect validate test lint dev-api dev-web dev clean
+.PHONY: help setup migrate reset-db gen-small gen-full load detect validate test lint docs dev-api dev-web dev clean
 
 help: ## Show this help message
 	@echo "Order-to-Cash Revenue Leakage & Process Delay Tracker"
@@ -41,16 +43,20 @@ test: ## Run test suites across api, frontend, and pipeline
 	cd frontend && npm test
 	@echo "--> Testing Python Pipeline..."
 	cd backend/pipeline && pytest
+	python -m pipeline.datagen reproduce
 
 lint: ## Run linting and typechecking across all projects
 	@echo "--> Linting Backend API..."
-	cd backend/api && npm run lint
+	cd backend/api && npm run lint && npx tsc --noEmit
 	@echo "--> Linting Frontend..."
-	cd frontend && npm run lint
+	cd frontend && npm run lint && npx tsc --noEmit
 	@echo "--> Linting Python Pipeline..."
 	ruff check backend/pipeline/
-	black --check backend/pipeline/
+	ruff format --check backend/pipeline/
 	mypy backend/pipeline/src
+
+docs: ## Generate data dictionary markdown from Pydantic schema
+	python scripts/gen_data_dictionary.py
 
 dev-api: ## Start Backend API server in watch mode
 	cd backend/api && npm run dev
