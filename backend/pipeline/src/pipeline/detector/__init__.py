@@ -1,4 +1,5 @@
-"""Order-to-Cash Anomaly and Delay Detector package."""
+"""Revenue leakage and process delay detection rule engine."""
 
-__version__ = "0.1.0"
+from .models import EvaluationMetric, Finding
 
+__all__ = ["EvaluationMetric", "Finding"]

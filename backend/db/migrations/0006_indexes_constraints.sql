@@ -62,7 +62,7 @@ CREATE INDEX IF NOT EXISTS idx_invoice_open_receivables
 -- Overdue invoices targeting aging & collections pipelines
 CREATE INDEX IF NOT EXISTS idx_invoice_overdue_aging
   ON o2c.invoice (due_date, balance_amount)
-  WHERE status = 'OVERDUE' OR (status IN ('ISSUED', 'PARTIALLY_PAID') AND due_date < CURRENT_DATE);
+  WHERE status IN ('OVERDUE', 'ISSUED', 'PARTIALLY_PAID');
 
 -- Invoices flagged as duplicate
 CREATE INDEX IF NOT EXISTS idx_invoice_duplicate_pointer

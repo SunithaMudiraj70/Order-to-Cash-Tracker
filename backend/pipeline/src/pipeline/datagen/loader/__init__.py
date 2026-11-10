@@ -1,2 +1,0 @@
-"""Database bulk loader module."""
-

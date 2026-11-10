@@ -7,19 +7,6 @@
 -- Idempotent: Yes
 -- ==============================================================================
 
--- Compatibility fallback for local standalone PostgreSQL without Supabase Auth extension
-CREATE SCHEMA IF NOT EXISTS auth;
-CREATE TABLE IF NOT EXISTS auth.users (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  email TEXT UNIQUE
-);
-
--- Ensure auth.uid() fallback exists if not provided by Supabase runtime
-CREATE OR REPLACE FUNCTION auth.uid()
-RETURNS UUID AS $$
-  SELECT NULLIF(current_setting('request.jwt.claim.sub', true), '')::uuid;
-$$ LANGUAGE sql STABLE;
-
 -- 1. USER PROFILES TABLE LINKED TO AUTH.USERS
 CREATE TABLE IF NOT EXISTS o2c.profiles (
   id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,

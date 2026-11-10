@@ -1,4 +1,5 @@
 """Order-to-Cash Synthetic Data Generator package."""
 
-__version__ = "0.1.0"
+from .config import DatagenConfig, ScaleProfile
 
+__all__ = ["DatagenConfig", "ScaleProfile"]
