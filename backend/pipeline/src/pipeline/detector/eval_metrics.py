@@ -5,9 +5,7 @@ import typer
 from pipeline.detector.models import EvaluationMetric, Finding
 
 
-def compute_metrics(
-    findings: list[Finding], ground_truth: list[tuple[str, str, str]]
-) -> list[EvaluationMetric]:
+def compute_metrics(findings: list[Finding], ground_truth: list[tuple[str, str, str]]) -> list[EvaluationMetric]:
     """PURPOSE: Calculate precision, recall, and F1 per issue type against ground truth.
     INPUT: findings: list[Finding], ground_truth: list[tuple(entity_type, entity_id, issue_type)]
     RETURNS: list[EvaluationMetric]

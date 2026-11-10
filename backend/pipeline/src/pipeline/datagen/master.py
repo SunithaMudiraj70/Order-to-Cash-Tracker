@@ -15,9 +15,7 @@ from pipeline.datagen.models import AccountRow
 TERMS_BY_SEGMENT = {"Enterprise": [45, 60], "Mid-Market": [30, 45], "SMB": [15, 30]}
 
 
-def _create_single_account(
-    rng: np.random.Generator, faker: Faker, idx: int, created_ts: datetime
-) -> AccountRow:
+def _create_single_account(rng: np.random.Generator, faker: Faker, idx: int, created_ts: datetime) -> AccountRow:
     """PURPOSE: Construct single account row with randomized attributes.
     INPUT: rng, faker, idx, created_ts
     RETURNS: AccountRow

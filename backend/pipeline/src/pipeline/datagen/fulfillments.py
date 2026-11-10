@@ -75,4 +75,3 @@ def generate_fulfillments(
         )
         shp_idx += 1
     return shipments, shipment_lines
-

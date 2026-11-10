@@ -45,15 +45,36 @@ def build_dataset(config: DatagenConfig) -> dict[str, list[Any]]:
     )
     events = generate_status_events(quotes, orders, shipments, invoices, payments, disputes)
     gt_rows = inject_all_anomalies(
-        rng, orders, o_lines, shipments, s_lines, invoices, i_lines,
-        payments, allocs, disputes, events, config.anomaly_rates, config.as_of_date, config.inject_anomalies
+        rng,
+        orders,
+        o_lines,
+        shipments,
+        s_lines,
+        invoices,
+        i_lines,
+        payments,
+        allocs,
+        disputes,
+        events,
+        config.anomaly_rates,
+        config.as_of_date,
+        config.inject_anomalies,
     )
     return {
-        "accounts": accounts, "quotes": quotes, "quote_lines": q_lines,
-        "orders": orders, "order_lines": o_lines, "shipments": shipments,
-        "shipment_lines": s_lines, "invoices": invoices, "invoice_lines": i_lines,
-        "payments": payments, "allocations": allocs, "disputes": disputes,
-        "status_events": events, "ground_truth": gt_rows,
+        "accounts": accounts,
+        "quotes": quotes,
+        "quote_lines": q_lines,
+        "orders": orders,
+        "order_lines": o_lines,
+        "shipments": shipments,
+        "shipment_lines": s_lines,
+        "invoices": invoices,
+        "invoice_lines": i_lines,
+        "payments": payments,
+        "allocations": allocs,
+        "disputes": disputes,
+        "status_events": events,
+        "ground_truth": gt_rows,
     }
 
 
@@ -61,8 +82,7 @@ def _save_validation(manifest_dir: Path, report: Any, fname: str = "validation_s
     """PURPOSE: Persist validation summary report to disk."""
     manifest_dir.mkdir(parents=True, exist_ok=True)
     summary_path = manifest_dir / fname
-    with open(summary_path, "w", encoding="utf-8") as f:
-        json.dump(report.model_dump(mode="json"), f, indent=2)
+    summary_path.write_text(json.dumps(report.model_dump(mode="json"), indent=2), encoding="utf-8")
     return summary_path
 
 
@@ -121,8 +141,10 @@ def reproduce(
     c2 = export_dataset(build_dataset(config), config)
     assert c1 == c2, "Reproducibility failure: Checksums between runs did not match!"
     repro_path = config.manifest_dir / "reproducibility.json"
-    with open(repro_path, "w", encoding="utf-8") as f:
-        json.dump({"status": "passed", "scale": scale.value, "seed": seed, "checksums": c1}, f, indent=2)
+    repro_path.write_text(
+        json.dumps({"status": "passed", "scale": scale.value, "seed": seed, "checksums": c1}, indent=2),
+        encoding="utf-8",
+    )
     typer.echo(f"--> Reproducibility confirmed! All {len(c1)} files match bit-for-bit.")
 
 

@@ -44,15 +44,15 @@ SCALE_CONFIGS = {
 # Distinct per-issue rates between 0.4% and 1.5% of orders (total ~7.6%)
 ANOMALY_RATES: dict[str, float] = {
     "INVOICE_EXCEEDS_FULFILLED": 0.008,  # ~56
-    "PAYMENT_ALLOCATED_TWICE": 0.009,    # ~63
-    "ORDER_CLOSED_UNPAID": 0.010,        # ~70
-    "STATUS_EVENT_SKIPPED_STATE": 0.006, # ~42
-    "DISPUTE_NOT_IN_RECEIVABLES": 0.005, # ~35
-    "PARTIAL_SHIPMENT": 0.012,           # ~84
-    "UNDERBILLING": 0.009,               # ~63
-    "DUPLICATE_INVOICE": 0.007,          # ~49
-    "SHORT_PAYMENT": 0.011,              # ~77
-    "LONG_OVERDUE": 0.007,               # ~49
+    "PAYMENT_ALLOCATED_TWICE": 0.009,  # ~63
+    "ORDER_CLOSED_UNPAID": 0.010,  # ~70
+    "STATUS_EVENT_SKIPPED_STATE": 0.006,  # ~42
+    "DISPUTE_NOT_IN_RECEIVABLES": 0.005,  # ~35
+    "PARTIAL_SHIPMENT": 0.012,  # ~84
+    "UNDERBILLING": 0.009,  # ~63
+    "DUPLICATE_INVOICE": 0.007,  # ~49
+    "SHORT_PAYMENT": 0.011,  # ~77
+    "LONG_OVERDUE": 0.007,  # ~49
 }
 
 
@@ -64,14 +64,8 @@ class DatagenConfig(BaseModel):
     """
 
     seed: int = Field(default_factory=lambda: int(os.getenv("DATAGEN_SEED", "20261022")))
-    scale: ScaleProfile = Field(
-        default_factory=lambda: ScaleProfile(os.getenv("DATAGEN_SCALE", "small").lower())
-    )
-    as_of_date: date = Field(
-        default_factory=lambda: date.fromisoformat(
-            os.getenv("DATAGEN_AS_OF_DATE", "2026-10-31")
-        )
-    )
+    scale: ScaleProfile = Field(default_factory=lambda: ScaleProfile(os.getenv("DATAGEN_SCALE", "small").lower()))
+    as_of_date: date = Field(default_factory=lambda: date.fromisoformat(os.getenv("DATAGEN_AS_OF_DATE", "2026-10-31")))
     inject_anomalies: bool = Field(default=True)
     anomaly_rates: dict[str, float] = Field(default_factory=lambda: ANOMALY_RATES.copy())
     base_data_dir: Path = Field(default=Path("data"))

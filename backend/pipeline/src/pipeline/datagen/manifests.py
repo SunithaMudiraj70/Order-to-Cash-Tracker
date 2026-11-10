@@ -66,11 +66,16 @@ def write_distribution_profile(dataset: dict[str, list[Any]], config: DatagenCon
     bins = {"0-5k": 0, "5k-15k": 0, "15k-30k": 0, "30k-50k": 0, "50k+": 0}
     for o in orders:
         val = float(o.total_amount)
-        if val < 5000: bins["0-5k"] += 1
-        elif val < 15000: bins["5k-15k"] += 1
-        elif val < 30000: bins["15k-30k"] += 1
-        elif val < 50000: bins["30k-50k"] += 1
-        else: bins["50k+"] += 1
+        if val < 5000:
+            bins["0-5k"] += 1
+        elif val < 15000:
+            bins["5k-15k"] += 1
+        elif val < 30000:
+            bins["15k-30k"] += 1
+        elif val < 50000:
+            bins["30k-50k"] += 1
+        else:
+            bins["50k+"] += 1
 
     terms_mix: dict[str, int] = {}
     for a in accounts:

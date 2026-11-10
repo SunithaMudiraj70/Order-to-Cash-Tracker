@@ -134,4 +134,3 @@ def detect_long_overdue(conn) -> list[Finding]:
             )
             for r in cur.fetchall()
         ]
-

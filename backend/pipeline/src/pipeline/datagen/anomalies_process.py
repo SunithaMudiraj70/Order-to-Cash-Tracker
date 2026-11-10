@@ -6,14 +6,8 @@ from decimal import Decimal
 from pipeline.datagen import ids
 from pipeline.datagen.derive import round_money
 from pipeline.datagen.models import (
-    DisputeRow,
-    GroundTruthRow,
-    InvoiceLineRow,
-    InvoiceRow,
-    OrderLineRow,
-    SalesOrderRow,
-    ShipmentLineRow,
-    StatusEventRow,
+    DisputeRow, GroundTruthRow, InvoiceLineRow, InvoiceRow,
+    OrderLineRow, SalesOrderRow, ShipmentLineRow, StatusEventRow,
 )
 
 
@@ -32,22 +26,32 @@ def inject_status_event_skipped_state(
     records: list[GroundTruthRow] = []
     curr_idx = gt_idx
     for o in orders[sample_size : sample_size * 2]:
-        events.append(StatusEventRow(
-            event_id=ids.event_id(len(events) + curr_idx),
-            entity_type="SALES_ORDER", entity_id=o.order_id,
-            from_status="CREATED", to_status="PAID",
-            event_ts=o.created_at + timedelta(days=2), actor="system",
-            source="unauthorized_override", payload={"anomaly": True},
-            created_at=o.created_at,
-        ))
-        records.append(GroundTruthRow(
-            gt_id=ids.gt_id(curr_idx), entity_type="SALES_ORDER",
-            entity_id=o.order_id, issue_type="STATUS_EVENT_SKIPPED_STATE",
-            expected_decision="AUDIT_STATE_JUMP",
-            injected_rule="RULE-04-SKIPPED-STATE",
-            notes="Status jumped illegal state from CREATED directly to PAID.",
-            created_at=ts,
-        ))
+        events.append(
+            StatusEventRow(
+                event_id=ids.event_id(len(events) + curr_idx),
+                entity_type="SALES_ORDER",
+                entity_id=o.order_id,
+                from_status="CREATED",
+                to_status="PAID",
+                event_ts=o.created_at + timedelta(days=2),
+                actor="system",
+                source="unauthorized_override",
+                payload={"anomaly": True},
+                created_at=o.created_at,
+            )
+        )
+        records.append(
+            GroundTruthRow(
+                gt_id=ids.gt_id(curr_idx),
+                entity_type="SALES_ORDER",
+                entity_id=o.order_id,
+                issue_type="STATUS_EVENT_SKIPPED_STATE",
+                expected_decision="AUDIT_STATE_JUMP",
+                injected_rule="RULE-04-SKIPPED-STATE",
+                notes="Status jumped illegal state from CREATED directly to PAID.",
+                created_at=ts,
+            )
+        )
         curr_idx += 1
     return records, curr_idx
 
@@ -71,19 +75,29 @@ def inject_dispute_not_in_receivables(
     for inv in paid_invoices[start : start + sample_size]:
         d_id = ids.dispute_id(len(disputes) + curr_idx)
         d_ts = inv.created_at + timedelta(days=15)
-        disputes.append(DisputeRow(
-            dispute_id=d_id, invoice_id=inv.invoice_id, status="OPEN",
-            opened_at=d_ts, disputed_amount=round_money(inv.total_amount * Decimal("0.4")),
-            reason_code="PRICING_ERROR", created_at=d_ts,
-        ))
-        records.append(GroundTruthRow(
-            gt_id=ids.gt_id(curr_idx), entity_type="DISPUTE",
-            entity_id=d_id, issue_type="DISPUTE_NOT_IN_RECEIVABLES",
-            expected_decision="REJECT_DISPUTE_PAID_INVOICE",
-            injected_rule="RULE-05-DISPUTE-NOT-IN-RECEIVABLES",
-            notes="Dispute filed against fully settled invoice.",
-            created_at=ts,
-        ))
+        disputes.append(
+            DisputeRow(
+                dispute_id=d_id,
+                invoice_id=inv.invoice_id,
+                status="OPEN",
+                opened_at=d_ts,
+                disputed_amount=round_money(inv.total_amount * Decimal("0.4")),
+                reason_code="PRICING_ERROR",
+                created_at=d_ts,
+            )
+        )
+        records.append(
+            GroundTruthRow(
+                gt_id=ids.gt_id(curr_idx),
+                entity_type="DISPUTE",
+                entity_id=d_id,
+                issue_type="DISPUTE_NOT_IN_RECEIVABLES",
+                expected_decision="REJECT_DISPUTE_PAID_INVOICE",
+                injected_rule="RULE-05-DISPUTE-NOT-IN-RECEIVABLES",
+                notes="Dispute filed against fully settled invoice.",
+                created_at=ts,
+            )
+        )
         curr_idx += 1
     return records, curr_idx
 
@@ -115,13 +129,17 @@ def inject_partial_shipment(
         if mil:
             mil.billed_qty = sl.shipped_qty
             mil.line_total = round_money(mil.billed_qty * mil.unit_price)
-        records.append(GroundTruthRow(
-            gt_id=ids.gt_id(curr_idx), entity_type="SHIPMENT_LINE",
-            entity_id=sl.shipment_line_id, issue_type="PARTIAL_SHIPMENT",
-            expected_decision="SCHEDULE_BACKORDER_FULFILLMENT",
-            injected_rule="RULE-06-PARTIAL-SHIPMENT",
-            notes="Order line only partially fulfilled without backorder notice.",
-            created_at=ts,
-        ))
+        records.append(
+            GroundTruthRow(
+                gt_id=ids.gt_id(curr_idx),
+                entity_type="SHIPMENT_LINE",
+                entity_id=sl.shipment_line_id,
+                issue_type="PARTIAL_SHIPMENT",
+                expected_decision="SCHEDULE_BACKORDER_FULFILLMENT",
+                injected_rule="RULE-06-PARTIAL-SHIPMENT",
+                notes="Order line only partially fulfilled without backorder notice.",
+                created_at=ts,
+            )
+        )
         curr_idx += 1
     return records, curr_idx

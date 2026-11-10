@@ -29,11 +29,20 @@ def _check_primary_keys(dataset: dict[str, list], report: ValidationReport) -> N
     """
     report.checked_rules.append("PRIMARY_KEY_UNIQUENESS")
     pk_map = {
-        "accounts": "account_id", "quotes": "quote_id", "quote_lines": "quote_line_id",
-        "orders": "order_id", "order_lines": "order_line_id", "shipments": "shipment_id",
-        "shipment_lines": "shipment_line_id", "invoices": "invoice_id", "invoice_lines": "invoice_line_id",
-        "payments": "payment_id", "allocations": "allocation_id", "disputes": "dispute_id",
-        "status_events": "event_id", "ground_truth": "gt_id",
+        "accounts": "account_id",
+        "quotes": "quote_id",
+        "quote_lines": "quote_line_id",
+        "orders": "order_id",
+        "order_lines": "order_line_id",
+        "shipments": "shipment_id",
+        "shipment_lines": "shipment_line_id",
+        "invoices": "invoice_id",
+        "invoice_lines": "invoice_line_id",
+        "payments": "payment_id",
+        "allocations": "allocation_id",
+        "disputes": "dispute_id",
+        "status_events": "event_id",
+        "ground_truth": "gt_id",
     }
     for table_name, pk_field in pk_map.items():
         seen = set()
@@ -97,7 +106,9 @@ def _check_date_order(dataset: dict[str, list], report: ValidationReport) -> Non
     for inv in dataset.get("invoices", []):
         s = s_map.get(inv.order_id)
         if s and inv.invoice_date < s.ship_date and inv.invoice_id not in gt_entities:
-            report.errors.append(f"UNLABELLED: invoice_date {inv.invoice_date} < ship_date {s.ship_date} on {inv.invoice_id}")
+            report.errors.append(
+                f"UNLABELLED: invoice_date {inv.invoice_date} < ship_date {s.ship_date} on {inv.invoice_id}"
+            )
             report.unreconciled_defects += 1
     for alc in dataset.get("allocations", []):
         inv = inv_map.get(alc.invoice_id)

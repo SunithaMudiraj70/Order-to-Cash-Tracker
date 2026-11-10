@@ -5,11 +5,11 @@ ERRORS: raises AssertionError on missing or invalid property mappings
 """
 
 from pathlib import Path
-import pytest
+
+import scripts.gen_data_dictionary as gdd
 from pydantic import BaseModel
 
 from pipeline.datagen import models
-import scripts.gen_data_dictionary as gdd
 
 
 def test_models_have_valid_data_dictionary_properties() -> None:
@@ -50,4 +50,3 @@ def test_data_dictionary_markdown_exists_and_contains_all_entities() -> None:
     for entity_name in models.__all__:
         clean_name = entity_name.replace("Row", "")
         assert f"## {clean_name}" in content, f"Missing section for {clean_name}"
-

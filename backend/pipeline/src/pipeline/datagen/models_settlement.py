@@ -66,4 +66,3 @@ class GroundTruthRow(BaseModel):
     detected: bool = False
     detected_at: datetime | None = None
     created_at: datetime
-

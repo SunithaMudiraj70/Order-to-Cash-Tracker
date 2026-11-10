@@ -113,7 +113,9 @@ def run(
             raise typer.Exit(code=0)
         conn = get_connection()
         with conn.cursor() as cur:
-            cur.execute("DROP SCHEMA IF EXISTS o2c, gt, analytics CASCADE; DROP TABLE IF EXISTS public.o2c_migrations CASCADE;")
+            cur.execute(
+                "DROP SCHEMA IF EXISTS o2c, gt, analytics CASCADE; DROP TABLE IF EXISTS public.o2c_migrations CASCADE;"
+            )
         conn.commit()
         conn.close()
 

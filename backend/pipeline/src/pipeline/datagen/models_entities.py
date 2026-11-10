@@ -111,4 +111,3 @@ class InvoiceLineRow(BaseModel):
     unit_price: Decimal
     line_total: Decimal
     created_at: datetime
-

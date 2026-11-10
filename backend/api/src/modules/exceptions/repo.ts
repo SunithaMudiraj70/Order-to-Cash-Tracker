@@ -5,7 +5,6 @@
  * ERRORS: throws Error on database failure
  */
 
-import crypto from 'crypto';
 import { sql } from '../../db/client.js';
 
 export interface FindingRecord {

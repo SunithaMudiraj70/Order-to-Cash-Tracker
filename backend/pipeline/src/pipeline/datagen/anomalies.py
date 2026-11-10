@@ -99,21 +99,13 @@ def _inject_group_two(
         o_lines, s_lines, i_lines, max(1, int(n * rates.get("PARTIAL_SHIPMENT", 0.012))), idx, ts
     )
     records.extend(r6)
-    r7, idx = inject_underbilling(
-        i_lines, max(1, int(n * rates.get("UNDERBILLING", 0.009))), idx, ts
-    )
+    r7, idx = inject_underbilling(i_lines, max(1, int(n * rates.get("UNDERBILLING", 0.009))), idx, ts)
     records.extend(r7)
-    r8, idx = inject_duplicate_invoice(
-        invoices, max(1, int(n * rates.get("DUPLICATE_INVOICE", 0.007))), idx, ts
-    )
+    r8, idx = inject_duplicate_invoice(invoices, max(1, int(n * rates.get("DUPLICATE_INVOICE", 0.007))), idx, ts)
     records.extend(r8)
-    r9, idx = inject_short_payment(
-        invoices, allocs, max(1, int(n * rates.get("SHORT_PAYMENT", 0.011))), idx, ts
-    )
+    r9, idx = inject_short_payment(invoices, allocs, max(1, int(n * rates.get("SHORT_PAYMENT", 0.011))), idx, ts)
     records.extend(r9)
-    r10, _ = inject_long_overdue(
-        invoices, allocs, max(1, int(n * rates.get("LONG_OVERDUE", 0.007))), idx, ts, as_of
-    )
+    r10, _ = inject_long_overdue(invoices, allocs, max(1, int(n * rates.get("LONG_OVERDUE", 0.007))), idx, ts, as_of)
     records.extend(r10)
     return records
 
@@ -144,7 +136,17 @@ def inject_all_anomalies(
     ts = datetime(2026, 10, 22, 12, 0, 0, tzinfo=UTC)
     g1, next_idx = _inject_group_one(orders, invoices, invoice_lines, allocations, rates, ts)
     g2 = _inject_group_two(
-        orders, order_lines, shipment_lines, invoices, invoice_lines,
-        allocations, disputes, events, rates, next_idx, ts, as_of
+        orders,
+        order_lines,
+        shipment_lines,
+        invoices,
+        invoice_lines,
+        allocations,
+        disputes,
+        events,
+        rates,
+        next_idx,
+        ts,
+        as_of,
     )
     return g1 + g2

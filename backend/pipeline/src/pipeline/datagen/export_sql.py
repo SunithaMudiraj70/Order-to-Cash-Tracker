@@ -80,4 +80,3 @@ def export_json_tables(dataset: dict[str, list[Any]], output_dir: Path) -> None:
         data = [r.model_dump(mode="json") if hasattr(r, "model_dump") else r for r in rows]
         with open(path, "w", encoding="utf-8") as f:
             json.dump(data, f, indent=2)
-

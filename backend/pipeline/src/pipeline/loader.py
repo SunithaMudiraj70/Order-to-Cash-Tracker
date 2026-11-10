@@ -103,9 +103,7 @@ def load_command(
                 raise FileNotFoundError(f"Missing file: {file_path}")
             count = copy_csv_to_table(conn, table, file_path)
             expected = expected_counts.get(filename, count)
-            assert count == expected, (
-                f"Count mismatch for {table}: loaded {count} vs expected {expected}"
-            )
+            assert count == expected, f"Count mismatch for {table}: loaded {count} vs expected {expected}"
             typer.echo(f"  [LOADED] {table:<24} {count:>6} rows")
 
         with conn.cursor() as cur:

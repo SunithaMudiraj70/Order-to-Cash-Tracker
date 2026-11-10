@@ -16,11 +16,20 @@ from pipeline.datagen.config import DatagenConfig, ScaleProfile
 from pipeline.datagen.export_sql import export_json_tables, export_sql_seed
 
 TABLE_FILE_MAP = {
-    "accounts": "account.csv", "quotes": "quote.csv", "quote_lines": "quote_line.csv",
-    "orders": "sales_order.csv", "order_lines": "order_line.csv", "shipments": "shipment.csv",
-    "shipment_lines": "shipment_line.csv", "invoices": "invoice.csv", "invoice_lines": "invoice_line.csv",
-    "payments": "payment.csv", "allocations": "payment_allocation.csv", "disputes": "dispute.csv",
-    "status_events": "status_event.csv", "ground_truth": "ground_truth.csv",
+    "accounts": "account.csv",
+    "quotes": "quote.csv",
+    "quote_lines": "quote_line.csv",
+    "orders": "sales_order.csv",
+    "order_lines": "order_line.csv",
+    "shipments": "shipment.csv",
+    "shipment_lines": "shipment_line.csv",
+    "invoices": "invoice.csv",
+    "invoice_lines": "invoice_line.csv",
+    "payments": "payment.csv",
+    "allocations": "payment_allocation.csv",
+    "disputes": "dispute.csv",
+    "status_events": "status_event.csv",
+    "ground_truth": "ground_truth.csv",
 }
 
 

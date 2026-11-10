@@ -13,9 +13,7 @@ def round_money(amount: Decimal) -> Decimal:
     return amount.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
 
 
-def calc_line_total(
-    qty: Decimal, unit_price: Decimal, discount_pct: Decimal = Decimal("0.00")
-) -> Decimal:
+def calc_line_total(qty: Decimal, unit_price: Decimal, discount_pct: Decimal = Decimal("0.00")) -> Decimal:
     """PURPOSE: Calculate discounted line total from quantity and unit price.
     INPUT: qty: Decimal, unit_price: Decimal, discount_pct: Decimal
     RETURNS: Decimal

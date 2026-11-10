@@ -5,6 +5,7 @@ ERRORS: AssertionError on fan-out, date ordering violations, or dynamic date usa
 """
 
 import pytest
+
 from pipeline.db.connection import get_connection
 
 
@@ -73,8 +74,9 @@ def test_exception_triage_table_structure(db_conn) -> None:
     ERRORS: AssertionError
     """
     with db_conn.cursor() as cur:
-        cur.execute("SELECT rowsecurity FROM pg_tables WHERE schemaname = 'analytics' AND tablename = 'exception_triage';")
+        cur.execute(
+            "SELECT rowsecurity FROM pg_tables WHERE schemaname = 'analytics' AND tablename = 'exception_triage';"
+        )
         res = cur.fetchone()
         assert res is not None, "analytics.exception_triage table does not exist"
         assert res[0] is True, "RLS is not enabled on analytics.exception_triage"
-

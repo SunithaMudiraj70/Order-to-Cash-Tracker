@@ -62,9 +62,7 @@ def generate_sales_orders(
         order_id = ids.order_id(o_idx)
         o_created = datetime.combine(order_date, datetime.min.time(), tzinfo=UTC)
 
-        lines, ol_idx = _build_order_lines(
-            ql_by_quote.get(q.quote_id, []), order_id, o_created, ol_idx
-        )
+        lines, ol_idx = _build_order_lines(ql_by_quote.get(q.quote_id, []), order_id, o_created, ol_idx)
         order_lines.extend(lines)
         orders.append(
             SalesOrderRow(
@@ -81,4 +79,3 @@ def generate_sales_orders(
         )
         o_idx += 1
     return orders, order_lines
-

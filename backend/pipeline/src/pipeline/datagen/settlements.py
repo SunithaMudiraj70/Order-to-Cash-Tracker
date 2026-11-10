@@ -25,14 +25,19 @@ from pipeline.datagen.models import (
     ShipmentRow,
 )
 from pipeline.datagen.settlements_payments import (
-    PAYMENT_METHODS,
     create_settlement_instalments,
     create_unallocated_batch,
 )
 
 
 def _build_milestone_invoice(
-    subtotal: Decimal, inv_idx: int, o: SalesOrderRow, inv_date: date, due: date, will_pay: bool, inv_created: datetime
+    subtotal: Decimal,
+    inv_idx: int,
+    o: SalesOrderRow,
+    inv_date: date,
+    due: date,
+    will_pay: bool,
+    inv_created: datetime,
 ) -> InvoiceRow:
     """PURPOSE: Construct secondary milestone billing invoice for an order.
     INPUT: subtotal, inv_idx, o, inv_date, due, will_pay, inv_created
@@ -44,11 +49,19 @@ def _build_milestone_invoice(
     m_tax = round_money(m_sub * Decimal("0.08"))
     m_tot = m_sub + m_tax
     return InvoiceRow(
-        invoice_id=m_id, order_id=o.order_id, account_id=o.account_id,
-        status="PAID" if will_pay else "ISSUED", invoice_date=inv_date + timedelta(days=1),
-        due_date=due + timedelta(days=1), subtotal=m_sub, tax=m_tax, total_amount=m_tot,
-        paid_amount=m_tot if will_pay else Decimal("0.00"), balance_amount=Decimal("0.00") if will_pay else m_tot,
-        currency="USD", created_at=inv_created
+        invoice_id=m_id,
+        order_id=o.order_id,
+        account_id=o.account_id,
+        status="PAID" if will_pay else "ISSUED",
+        invoice_date=inv_date + timedelta(days=1),
+        due_date=due + timedelta(days=1),
+        subtotal=m_sub,
+        tax=m_tax,
+        total_amount=m_tot,
+        paid_amount=m_tot if will_pay else Decimal("0.00"),
+        balance_amount=Decimal("0.00") if will_pay else m_tot,
+        currency="USD",
+        created_at=inv_created,
     )
 
 
@@ -60,7 +73,13 @@ def generate_invoices_and_settlement(
     shipments: list[ShipmentRow],
     params: ScaleParameters,
     as_of: date,
-) -> tuple[list[InvoiceRow], list[InvoiceLineRow], list[PaymentRow], list[PaymentAllocationRow], list[DisputeRow]]:
+) -> tuple[
+    list[InvoiceRow],
+    list[InvoiceLineRow],
+    list[PaymentRow],
+    list[PaymentAllocationRow],
+    list[DisputeRow],
+]:
     """PURPOSE: Generate parameterized invoices and remittances matching volume requirements.
     INPUT: rng, orders, order_lines, accounts, shipments, params, as_of
     RETURNS: tuple of (invoices, invoice_lines, payments, allocations, disputes)
@@ -72,14 +91,19 @@ def generate_invoices_and_settlement(
         ol_by_order.setdefault(ol.order_id, []).append(ol)
     ship_by_order = {s.order_id: s for s in shipments}
 
-    invoices, inv_lines, payments, allocations, disputes = [], [], [], [], []
+    invoices: list[InvoiceRow] = []
+    inv_lines: list[InvoiceLineRow] = []
+    payments: list[PaymentRow] = []
+    allocations: list[PaymentAllocationRow] = []
+    disputes: list[DisputeRow] = []
     inv_idx, il_idx, pay_idx, alc_idx = 1, 1, 1, 1
     extra_invoices_needed = max(0, params.target_invoices_count - len(orders))
 
     for idx, o in enumerate(orders):
         ship = ship_by_order.get(o.order_id)
-        ship_date = ship.ship_date if ship else o.order_date + timedelta(days=4)
-        inv_date = ship_date + timedelta(days=int(rng.integers(0, 3)))
+        fallback_date = o.order_date + timedelta(days=4)
+        ship_date: date = ship.ship_date if (ship and ship.ship_date) else fallback_date
+        inv_date: date = ship_date + timedelta(days=int(rng.integers(0, 3)))
         terms = acc_terms.get(o.account_id, 30)
         due = calc_due_date(inv_date, terms)
         inv_id = ids.invoice_id(inv_idx)
@@ -101,13 +125,23 @@ def generate_invoices_and_settlement(
             payments.extend(pays)
             allocations.extend(alcs)
 
-        invoices.append(InvoiceRow(
-            invoice_id=inv_id, order_id=o.order_id, account_id=o.account_id,
-            status="PAID" if will_pay else ("OVERDUE" if due < as_of else "ISSUED"),
-            invoice_date=inv_date, due_date=due, subtotal=subtotal, tax=tax,
-            total_amount=total, paid_amount=paid, balance_amount=bal, currency="USD",
-            created_at=inv_created
-        ))
+        invoices.append(
+            InvoiceRow(
+                invoice_id=inv_id,
+                order_id=o.order_id,
+                account_id=o.account_id,
+                status="PAID" if will_pay else ("OVERDUE" if due < as_of else "ISSUED"),
+                invoice_date=inv_date,
+                due_date=due,
+                subtotal=subtotal,
+                tax=tax,
+                total_amount=total,
+                paid_amount=paid,
+                balance_amount=bal,
+                currency="USD",
+                created_at=inv_created,
+            )
+        )
         inv_idx += 1
 
         if idx < extra_invoices_needed:
