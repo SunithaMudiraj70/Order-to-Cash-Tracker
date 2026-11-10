@@ -1,0 +1,68 @@
+# Environment Variables
+.env
+.env.local
+.env.*.local
+!.env.example
+
+# Node.js dependencies & build outputs
+node_modules/
+dist/
+build/
+coverage/
+.turbo/
+.npm/
+*.tsbuildinfo
+
+# Python dependencies & build outputs
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+.venv/
+ENV/
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+.mypy_cache/
+.pytest_cache/
+.ruff_cache/
+
+# Data directories (raw datasets, cache)
+data/raw/*
+!data/raw/.gitkeep
+data/processed/*
+!data/processed/.gitkeep
+data/ground_truth/*
+!data/ground_truth/.gitkeep
+data/manifests/*
+!data/manifests/.gitkeep
+
+# Supabase local files
+.supabase/
+supabase/.temp/
+
+# IDE & OS files
+.DS_Store
+Thumbs.db
+*.bak
+*.swp
+.idea/
+.vscode/*
+!.vscode/settings.json
+!.vscode/extensions.json
+

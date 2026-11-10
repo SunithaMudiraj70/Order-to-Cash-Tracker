@@ -1,0 +1,15 @@
+{
+  "name": "order-to-cash-leakage-monorepo",
+  "version": "0.1.0",
+  "private": true,
+  "workspaces": [
+    "apps/*"
+  ],
+  "scripts": {
+    "lint:api": "npm run --workspace=@o2c/api lint",
+    "lint:web": "npm run --workspace=@o2c/web lint",
+    "test:api": "npm run --workspace=@o2c/api test",
+    "test:web": "npm run --workspace=@o2c/web test"
+  }
+}
+

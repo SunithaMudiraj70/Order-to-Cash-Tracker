@@ -1,0 +1,38 @@
+name: Database Migrations Check
+
+on:
+  pull_request:
+    paths:
+      - 'supabase/migrations/**'
+      - 'supabase/seed/**'
+      - 'supabase/tests/**'
+  push:
+    branches: [main]
+    paths:
+      - 'supabase/migrations/**'
+
+jobs:
+  validate-migrations:
+    name: Dry Run Migrations
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Supabase CLI
+        uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      - name: Start Supabase Stack
+        run: |
+          supabase start
+
+      - name: Reset DB and Apply Migrations
+        run: |
+          supabase db reset
+
+      - name: Execute pgTAP Verification Tests
+        run: |
+          supabase test db
+
