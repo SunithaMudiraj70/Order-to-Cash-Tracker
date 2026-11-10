@@ -2,11 +2,12 @@
 
 import os
 from datetime import date, timedelta
+from typing import Any
 
 from pipeline.detector.models import Finding
 
 
-def detect_partial_shipment(conn) -> list[Finding]:
+def detect_partial_shipment(conn: Any) -> list[Finding]:
     """PURPOSE: Detect shipment lines where shipped quantity is less than ordered.
     INPUT: conn: psycopg2 connection
     RETURNS: list[Finding]
@@ -32,7 +33,7 @@ def detect_partial_shipment(conn) -> list[Finding]:
         ]
 
 
-def detect_underbilling(conn) -> list[Finding]:
+def detect_underbilling(conn: Any) -> list[Finding]:
     """PURPOSE: Detect invoice lines billed at unit price below contracted order price.
     INPUT: conn: psycopg2 connection
     RETURNS: list[Finding]
@@ -58,7 +59,7 @@ def detect_underbilling(conn) -> list[Finding]:
         ]
 
 
-def detect_duplicate_invoice(conn) -> list[Finding]:
+def detect_duplicate_invoice(conn: Any) -> list[Finding]:
     """PURPOSE: Detect invoices flagged or created as duplicate billings.
     INPUT: conn: psycopg2 connection
     RETURNS: list[Finding]
@@ -83,7 +84,7 @@ def detect_duplicate_invoice(conn) -> list[Finding]:
         ]
 
 
-def detect_short_payment(conn) -> list[Finding]:
+def detect_short_payment(conn: Any) -> list[Finding]:
     """PURPOSE: Detect partially paid invoices with open balances and no disputes.
     INPUT: conn: psycopg2 connection
     RETURNS: list[Finding]
@@ -109,7 +110,7 @@ def detect_short_payment(conn) -> list[Finding]:
         ]
 
 
-def detect_long_overdue(conn) -> list[Finding]:
+def detect_long_overdue(conn: Any) -> list[Finding]:
     """PURPOSE: Detect severely overdue invoices with balances exceeding 90 days.
     INPUT: conn: psycopg2 connection
     RETURNS: list[Finding]

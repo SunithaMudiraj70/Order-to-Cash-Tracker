@@ -2,6 +2,7 @@
 
 import json
 from pathlib import Path
+from typing import Any
 
 import psycopg2.extras
 import typer
@@ -14,7 +15,7 @@ from pipeline.detector.rules import ALL_RULES
 app = typer.Typer(help="Order-to-Cash Anomaly Detector Evaluation CLI")
 
 
-def execute_all_rules(conn) -> list[Finding]:
+def execute_all_rules(conn: Any) -> list[Finding]:
     """PURPOSE: Execute all 10 detector rules against operational tables.
     INPUT: conn: connection
     RETURNS: list[Finding]
@@ -26,7 +27,7 @@ def execute_all_rules(conn) -> list[Finding]:
     return findings
 
 
-def save_findings_to_db(conn, findings: list[Finding]) -> None:
+def save_findings_to_db(conn: Any, findings: list[Finding]) -> None:
     """PURPOSE: Insert detector findings into analytics.detector_findings.
     INPUT: conn, findings: list[Finding]
     RETURNS: None

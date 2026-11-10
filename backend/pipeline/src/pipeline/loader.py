@@ -2,6 +2,7 @@
 
 import json
 from pathlib import Path
+from typing import Any
 
 import psycopg2.extras
 import typer
@@ -13,7 +14,7 @@ app = typer.Typer(help="Order-to-Cash Database Bulk Loader CLI")
 
 
 @app.callback()
-def callback():
+def callback() -> None:
     """Database bulk loader commands."""
 
 
@@ -35,7 +36,7 @@ LOAD_ORDER = [
 ]
 
 
-def truncate_tables(conn) -> None:
+def truncate_tables(conn: Any) -> None:
     """PURPOSE: Truncate operational and ground-truth tables in reverse order.
     INPUT: conn: psycopg2 connection
     RETURNS: None
@@ -47,7 +48,7 @@ def truncate_tables(conn) -> None:
     conn.commit()
 
 
-def copy_csv_to_table(conn, table: str, file_path: Path) -> int:
+def copy_csv_to_table(conn: Any, table: str, file_path: Path) -> int:
     """PURPOSE: Execute fast COPY FROM STDIN for a CSV file.
     INPUT: conn, table: str, file_path: Path
     RETURNS: int (number of rows loaded)
@@ -62,7 +63,8 @@ def copy_csv_to_table(conn, table: str, file_path: Path) -> int:
         with conn.cursor() as cur:
             cur.copy_expert(copy_sql, f)
             cur.execute(f"SELECT COUNT(*) FROM {table};")
-            count = cur.fetchone()[0]
+            row = cur.fetchone()
+            count = int(row[0]) if row else 0
     return count
 
 

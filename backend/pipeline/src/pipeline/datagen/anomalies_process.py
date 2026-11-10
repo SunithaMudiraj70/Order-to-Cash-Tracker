@@ -6,8 +6,14 @@ from decimal import Decimal
 from pipeline.datagen import ids
 from pipeline.datagen.derive import round_money
 from pipeline.datagen.models import (
-    DisputeRow, GroundTruthRow, InvoiceLineRow, InvoiceRow,
-    OrderLineRow, SalesOrderRow, ShipmentLineRow, StatusEventRow,
+    DisputeRow,
+    GroundTruthRow,
+    InvoiceLineRow,
+    InvoiceRow,
+    OrderLineRow,
+    SalesOrderRow,
+    ShipmentLineRow,
+    StatusEventRow,
 )
 
 

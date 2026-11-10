@@ -2,6 +2,7 @@
 
 import hashlib
 from pathlib import Path
+from typing import Any
 
 import typer
 
@@ -20,7 +21,7 @@ def calculate_checksum(file_path: Path) -> str:
     return hashlib.sha256(file_path.read_bytes()).hexdigest()
 
 
-def ensure_migration_table(conn) -> None:
+def ensure_migration_table(conn: Any) -> None:
     """PURPOSE: Create o2c.migrations table with RLS enabled and revoke anon privileges.
     INPUT: conn: psycopg2 connection
     RETURNS: None
@@ -51,7 +52,7 @@ def ensure_migration_table(conn) -> None:
     conn.commit()
 
 
-def get_applied_migrations(conn) -> dict[str, str]:
+def get_applied_migrations(conn: Any) -> dict[str, str]:
     """PURPOSE: Retrieve dictionary of applied migration versions and checksums.
     INPUT: conn: psycopg2 connection
     RETURNS: dict[str, str] (version -> checksum)
@@ -62,7 +63,7 @@ def get_applied_migrations(conn) -> dict[str, str]:
         return {row[0]: row[1] for row in cur.fetchall()}
 
 
-def apply_migration_file(conn, file_path: Path, version: str, checksum: str) -> None:
+def apply_migration_file(conn: Any, file_path: Path, version: str, checksum: str) -> None:
     """PURPOSE: Execute a single SQL migration inside a transaction and log it.
     INPUT: conn, file_path: Path, version: str, checksum: str
     RETURNS: None
@@ -82,7 +83,7 @@ def apply_migration_file(conn, file_path: Path, version: str, checksum: str) -> 
     conn.commit()
 
 
-def _process_file(conn, f: Path, applied: dict[str, str]) -> tuple[bool, str]:
+def _process_file(conn: Any, f: Path, applied: dict[str, str]) -> tuple[bool, str]:
     """PURPOSE: Validate checksum and apply single migration file if pending.
     INPUT: conn, f: Path, applied: dict
     RETURNS: tuple[bool (is_new), str (status_message)]

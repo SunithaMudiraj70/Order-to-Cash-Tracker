@@ -9,6 +9,7 @@ import json
 import subprocess
 from datetime import UTC, datetime
 from pathlib import Path
+from typing import Any
 
 import pandas as pd
 
@@ -46,7 +47,7 @@ def get_git_sha() -> str:
         return "unknown"
 
 
-def export_dataset(dataset: dict[str, list], config: DatagenConfig) -> dict[str, str]:
+def export_dataset(dataset: dict[str, list[Any]], config: DatagenConfig) -> dict[str, str]:
     """PURPOSE: Serialize dataset tables to CSV, JSON, seed SQL, and calculate sha256 checksums.
     INPUT: dataset: dict[str, list of pydantic models], config: DatagenConfig
     RETURNS: dict[str, str] (filename -> sha256 checksum)

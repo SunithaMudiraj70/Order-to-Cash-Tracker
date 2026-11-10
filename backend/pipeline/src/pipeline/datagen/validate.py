@@ -5,6 +5,7 @@ ERRORS: none
 """
 
 from datetime import UTC, datetime
+from typing import Any
 
 from pydantic import BaseModel, Field
 
@@ -21,7 +22,7 @@ class ValidationReport(BaseModel):
     validated_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
 
-def _check_primary_keys(dataset: dict[str, list], report: ValidationReport) -> None:
+def _check_primary_keys(dataset: dict[str, list[Any]], report: ValidationReport) -> None:
     """PURPOSE: Assert primary key uniqueness across all entity tables.
     INPUT: dataset, report
     RETURNS: None
@@ -54,7 +55,7 @@ def _check_primary_keys(dataset: dict[str, list], report: ValidationReport) -> N
             seen.add(val)
 
 
-def _check_foreign_keys(dataset: dict[str, list], report: ValidationReport) -> None:
+def _check_foreign_keys(dataset: dict[str, list[Any]], report: ValidationReport) -> None:
     """PURPOSE: Assert relational referential integrity between tables.
     INPUT: dataset, report
     RETURNS: None
@@ -80,7 +81,7 @@ def _check_foreign_keys(dataset: dict[str, list], report: ValidationReport) -> N
         report.is_valid = False
 
 
-def _check_date_order(dataset: dict[str, list], report: ValidationReport) -> None:
+def _check_date_order(dataset: dict[str, list[Any]], report: ValidationReport) -> None:
     """PURPOSE: Assert chronological order across quote, order, shipment, invoice, payment milestones.
     INPUT: dataset, report
     RETURNS: None
@@ -119,7 +120,7 @@ def _check_date_order(dataset: dict[str, list], report: ValidationReport) -> Non
         report.is_valid = False
 
 
-def validate_dataset(dataset: dict[str, list]) -> ValidationReport:
+def validate_dataset(dataset: dict[str, list[Any]]) -> ValidationReport:
     """PURPOSE: Validate PK uniqueness, FK integrity, ground truth isolation, and date ordering.
     INPUT: dataset: dict[str, list of pydantic row models]
     RETURNS: ValidationReport

@@ -23,3 +23,18 @@ export async function findProfileById(userId: string): Promise<UserProfile | nul
   return row || null;
 }
 
+/**
+ * PURPOSE: Query user profile record by user email
+ * INPUT: email: string
+ * RETURNS: Promise<UserProfile | null>
+ * ERRORS: throws on database execution failure
+ */
+export async function findProfileByEmail(email: string): Promise<UserProfile | null> {
+  const [row] = await sql<UserProfile[]>`
+    SELECT id, email, role, full_name, account_id
+    FROM o2c.profiles
+    WHERE LOWER(email) = LOWER(${email})
+  `;
+  return row || null;
+}
+

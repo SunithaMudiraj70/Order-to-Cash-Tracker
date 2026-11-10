@@ -30,7 +30,7 @@ def generate_status_events(
     events: list[StatusEventRow] = []
     evt_idx = 1
 
-    def add_evt(entity_type: str, entity_id: str, from_s: str | None, to_s: str, ts: datetime):
+    def add_evt(entity_type: str, entity_id: str, from_s: str | None, to_s: str, ts: datetime) -> None:
         nonlocal evt_idx
         events.append(
             StatusEventRow(

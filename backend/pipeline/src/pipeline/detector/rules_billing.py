@@ -1,9 +1,11 @@
 """Discrete detection rules identifying billing discrepancies and duplicate allocations."""
 
+from typing import Any
+
 from pipeline.detector.models import Finding
 
 
-def detect_invoice_exceeds_fulfilled(conn) -> list[Finding]:
+def detect_invoice_exceeds_fulfilled(conn: Any) -> list[Finding]:
     """PURPOSE: Detect invoice lines where billed quantity exceeds shipped quantity.
     INPUT: conn: psycopg2 connection
     RETURNS: list[Finding]
@@ -29,7 +31,7 @@ def detect_invoice_exceeds_fulfilled(conn) -> list[Finding]:
         ]
 
 
-def detect_payment_allocated_twice(conn) -> list[Finding]:
+def detect_payment_allocated_twice(conn: Any) -> list[Finding]:
     """PURPOSE: Detect duplicate payment allocations referencing identical payments.
     INPUT: conn: psycopg2 connection
     RETURNS: list[Finding]
@@ -58,7 +60,7 @@ def detect_payment_allocated_twice(conn) -> list[Finding]:
         ]
 
 
-def detect_order_closed_unpaid(conn) -> list[Finding]:
+def detect_order_closed_unpaid(conn: Any) -> list[Finding]:
     """PURPOSE: Detect sales orders marked CLOSED that still have unpaid invoices.
     INPUT: conn: psycopg2 connection
     RETURNS: list[Finding]
@@ -85,7 +87,7 @@ def detect_order_closed_unpaid(conn) -> list[Finding]:
         ]
 
 
-def detect_status_event_skipped_state(conn) -> list[Finding]:
+def detect_status_event_skipped_state(conn: Any) -> list[Finding]:
     """PURPOSE: Detect status events transitioning directly from CREATED to PAID.
     INPUT: conn: psycopg2 connection
     RETURNS: list[Finding]
@@ -110,7 +112,7 @@ def detect_status_event_skipped_state(conn) -> list[Finding]:
         ]
 
 
-def detect_dispute_not_in_receivables(conn) -> list[Finding]:
+def detect_dispute_not_in_receivables(conn: Any) -> list[Finding]:
     """PURPOSE: Detect disputes filed on invoices with zero balance.
     INPUT: conn: psycopg2 connection
     RETURNS: list[Finding]

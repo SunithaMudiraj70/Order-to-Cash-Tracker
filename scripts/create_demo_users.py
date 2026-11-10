@@ -3,6 +3,7 @@
 import os
 import sys
 from pathlib import Path
+from typing import Any
 import requests
 import typer
 from dotenv import load_dotenv
@@ -27,39 +28,53 @@ def get_existing_auth_users(supabase_url: str, service_key: str) -> dict[str, st
     RETURNS: dict[str, str] (email -> user_id)
     ERRORS: raises requests.RequestException on network failure
     """
-    headers = {
-        "apikey": service_key,
-        "Authorization": f"Bearer {service_key}",
-    }
+    headers = {"apikey": service_key, "Authorization": f"Bearer {service_key}"}
     resp = requests.get(f"{supabase_url}/auth/v1/admin/users", headers=headers, timeout=15)
     resp.raise_for_status()
-    users = resp.json().get("users", [])
-    return {u["email"].lower(): u["id"] for u in users}
+    return {u["email"].lower(): u["id"] for u in resp.json().get("users", [])}
 
 
-def create_or_get_user(supabase_url: str, service_key: str, email: str, password: str) -> str:
-    """PURPOSE: Create user via Supabase Auth Admin API or fetch existing ID.
-    INPUT: supabase_url: str, service_key: str, email: str, password: str
-    RETURNS: str (UUID of user)
-    ERRORS: raises requests.RequestException on failure
+def _provision_user_sql(conn: Any, email: str) -> str:
+    """PURPOSE: Insert or fetch user UUID directly from auth.users table.
+    INPUT: conn: connection, email: str
+    RETURNS: str (UUID)
+    ERRORS: raises psycopg2.DatabaseError
     """
-    existing = get_existing_auth_users(supabase_url, service_key)
-    if email.lower() in existing:
-        user_id = existing[email.lower()]
-        headers = {"apikey": service_key, "Authorization": f"Bearer {service_key}"}
-        requests.put(
-            f"{supabase_url}/auth/v1/admin/users/{user_id}",
-            headers=headers,
-            json={"password": password, "email_confirm": True},
-            timeout=15,
-        )
-        return user_id
+    with conn.cursor() as cur:
+        cur.execute("SELECT id FROM auth.users WHERE LOWER(email) = LOWER(%s);", (email.lower(),))
+        row = cur.fetchone()
+        if row:
+            return str(row[0])
+        import uuid
 
-    headers = {"apikey": service_key, "Authorization": f"Bearer {service_key}"}
-    payload = {"email": email, "password": password, "email_confirm": True}
-    resp = requests.post(f"{supabase_url}/auth/v1/admin/users", headers=headers, json=payload, timeout=15)
-    resp.raise_for_status()
-    return resp.json()["id"]
+        user_id = str(uuid.uuid5(uuid.NAMESPACE_DNS, email.lower()))
+        sql = "INSERT INTO auth.users (id, email, created_at) VALUES (%s, %s, now()) ON CONFLICT (id) DO UPDATE SET email = EXCLUDED.email RETURNING id;"
+        cur.execute(sql, (user_id, email.lower()))
+        res = cur.fetchone()
+    conn.commit()
+    return str(res[0]) if res else user_id
+
+
+def create_or_get_user(supabase_url: str, service_key: str, email: str, password: str, conn: Any = None) -> str:
+    """PURPOSE: Create user via Supabase Auth Admin API or fallback to direct SQL if offline.
+    INPUT: supabase_url: str, service_key: str, email: str, password: str, conn: Any = None
+    RETURNS: str (UUID of user)
+    ERRORS: raises requests.RequestException on failure when no db conn
+    """
+    try:
+        existing = get_existing_auth_users(supabase_url, service_key)
+        headers = {"apikey": service_key, "Authorization": f"Bearer {service_key}"}
+        if email.lower() in existing:
+            user_id = existing[email.lower()]
+            requests.put(f"{supabase_url}/auth/v1/admin/users/{user_id}", headers=headers, json={"password": password, "email_confirm": True}, timeout=5)
+            return user_id
+        resp = requests.post(f"{supabase_url}/auth/v1/admin/users", headers=headers, json={"email": email, "password": password, "email_confirm": True}, timeout=5)
+        resp.raise_for_status()
+        return resp.json()["id"]
+    except requests.RequestException:
+        if conn is not None:
+            return _provision_user_sql(conn, email)
+        raise
 
 
 def upsert_profile(conn, user_id: str, role: str, full_name: str, email: str) -> None:
@@ -68,27 +83,29 @@ def upsert_profile(conn, user_id: str, role: str, full_name: str, email: str) ->
     RETURNS: None
     ERRORS: raises psycopg2.DatabaseError
     """
+    account_id = "ACC-000001" if role == "customer" else None
     with conn.cursor() as cur:
         cur.execute(
             """
-            INSERT INTO o2c.profiles (id, role, full_name, email, updated_at)
-            VALUES (%s, %s, %s, %s, timezone('utc', now()))
+            INSERT INTO o2c.profiles (id, role, full_name, email, account_id, updated_at)
+            VALUES (%s, %s, %s, %s, %s, timezone('utc', now()))
             ON CONFLICT (id) DO UPDATE SET
                 role = EXCLUDED.role,
                 full_name = EXCLUDED.full_name,
                 email = EXCLUDED.email,
+                account_id = EXCLUDED.account_id,
                 updated_at = timezone('utc', now());
             """,
-            (user_id, role, full_name, email),
+            (user_id, role, full_name, email, account_id),
         )
     conn.commit()
 
 
 def main(
-    email: str = typer.Option(None, "--email", "-e", help="Custom user email to create/update"),
-    password: str = typer.Option(None, "--password", "-p", help="Custom user password"),
-    role: str = typer.Option("analyst", "--role", "-r", help="User role (customer, sales_ops, support_agent, analyst, admin)"),
-    name: str = typer.Option("Custom User", "--name", "-n", help="Full name of user"),
+    email: str | None = None,
+    password: str | None = None,
+    role: str = "analyst",
+    name: str = "Custom User",
 ) -> None:
     """PURPOSE: CLI entry point to provision all demo users or create custom account.
     INPUT: Optional CLI options for email, password, role, name
@@ -105,7 +122,7 @@ def main(
     conn = get_connection()
     try:
         if email and password:
-            user_id = create_or_get_user(url, key, email, password)
+            user_id = create_or_get_user(url, key, email, password, conn)
             upsert_profile(conn, user_id, role, name, email)
             typer.echo(f"  [USER CREATED/UPDATED] email={email} role={role} id={user_id}")
             return
@@ -115,7 +132,7 @@ def main(
 
         typer.echo("--> Provisioning default demo users across roles...")
         for r, em, nm in ROLES:
-            user_id = create_or_get_user(url, key, em, default_pwd)
+            user_id = create_or_get_user(url, key, em, default_pwd, conn)
             upsert_profile(conn, user_id, r, nm, em)
             typer.echo(f"  [USER] Provisioned: role={r:<14} email={em} id={user_id}")
         typer.echo("--> All demo users provisioned successfully.")
