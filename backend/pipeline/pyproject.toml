@@ -1,0 +1,50 @@
+[build-system]
+requires = ["setuptools>=68.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "o2c-pipeline"
+version = "0.1.0"
+description = "Order-to-Cash Data Generator and Anomaly Detector Pipeline"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "faker>=25.1.0",
+    "numpy>=1.26.4",
+    "pandas>=2.2.2",
+    "psycopg2-binary>=2.9.9",
+    "pydantic>=2.7.1",
+    "pydantic-settings>=2.2.1",
+    "python-dotenv>=1.0.1",
+    "requests>=2.31.0",
+    "typer>=0.12.3",
+]
+
+[project.optional-dependencies]
+dev = [
+    "black>=24.4.2",
+    "mypy>=1.10.0",
+    "pytest>=8.2.0",
+    "pytest-cov>=5.0.0",
+    "ruff>=0.4.4",
+]
+
+[project.scripts]
+o2c-datagen = "pipeline.datagen.cli:app"
+o2c-detector = "pipeline.detector.evaluate:app"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.black]
+line-length = 100
+target-version = ["py311"]
+
+[tool.mypy]
+python_version = "3.11"
+strict = true
+ignore_missing_imports = true

@@ -20,12 +20,11 @@ repos:
     rev: 24.4.2
     hooks:
       - id: black
-        files: ^services/
+        files: ^backend/pipeline/
 
   - repo: https://github.com/pre-commit/mirrors-mypy
     rev: v1.10.0
     hooks:
       - id: mypy
-        files: ^services/
+        files: ^backend/pipeline/
         additional_dependencies: [pydantic>=2.7.0, types-requests]
-

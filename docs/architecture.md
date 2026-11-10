@@ -13,7 +13,7 @@ The **Order-to-Cash (O2C) Revenue Leakage & Process Delay Tracker** is an enterp
    - Ground truth anomaly repository strictly isolated from operational schemas.
 2. **Event-Sourced State Transitions**:
    - In accordance with audit compliance and process mining standards, historical entity state is **never overwritten**.
-   - Every mutation of an entity's status column automatically emits a cryptographically verifiable status change to `o2c.status_event`.
+   - Every mutation of an entity's status column automatically emits a status change to `o2c.status_event`.
 3. **12-Factor Configuration**:
    - Environment-variable-driven configuration across services via standardized schema validation.
 4. **Zero Feature Leakage in Ground Truth**:
@@ -26,7 +26,7 @@ The **Order-to-Cash (O2C) Revenue Leakage & Process Delay Tracker** is an enterp
 ```
 +-------------------------------------------------------------------------+
 |                              Presentation Layer                         |
-|                   apps/web (React 18 + Vite + TypeScript)               |
+|                   frontend (React 18 + Vite + TypeScript)               |
 |                   - TanStack Query (Server State Cache)                 |
 |                   - Zustand (Session, UI & Filter Store)                |
 |                   - Tailwind CSS + Recharts Dashboard Visuals           |
@@ -35,16 +35,16 @@ The **Order-to-Cash (O2C) Revenue Leakage & Process Delay Tracker** is an enterp
                                      v
 +-------------------------------------------------------------------------+
 |                               API Service Layer                         |
-|                   apps/api (Fastify + Node.js + TypeScript)             |
+|                   backend/api (Fastify + Node.js + TypeScript)          |
 |                   - Modular domain route handlers                       |
 |                   - Zod schema validation & DTO serializing             |
 |                   - Pino structured logging                             |
 +------------------------------------+------------------------------------+
-                                     | Supabase Client / Connection Pool
+                                     | PostgreSQL Connection Pool
                                      v
 +-------------------------------------------------------------------------+
 |                               Database Layer                            |
-|                          Supabase (PostgreSQL 15)                       |
+|                          PostgreSQL 15+ (Supabase)                      |
 |  +--------------------+  +--------------------+  +--------------------+  |
 |  |    Schema: o2c     |  |    Schema: gt      |  | Schema: analytics  |  |
 |  | - Operational core |  | - Ground Truth     |  | - AR Aging View    |  |
@@ -55,7 +55,7 @@ The **Order-to-Cash (O2C) Revenue Leakage & Process Delay Tracker** is an enterp
                     ^                                    ^
                     | Read Events & Tables               | Ingest & Seed
 +-------------------+--------------------+  +------------+----------------+
-|       services/detector (Python 3.11)  |  |   services/datagen (Python) |
+|       backend/pipeline: detector       |  |   backend/pipeline: datagen |
 |       - Rule execution engine          |  |   - Deterministic synthetics|
 |       - Lead time & aging calculators  |  |   - Anomaly injector engine |
 |       - Precision/Recall benchmarking  |  |   - Seed loader & checksums |
@@ -75,4 +75,3 @@ The PostgreSQL layer implements fine-grained Row-Level Security (RLS) driven by 
 | **`support_agent`**| Full | None | Manage disputes | Forbidden |
 | **`analyst`** | Full | None | Read-only | Read-only |
 | **`admin`** | Full | Full | Full | Read & Write |
-

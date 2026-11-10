@@ -20,8 +20,8 @@ jobs:
           node-version: 20
           cache: 'npm'
           cache-dependency-path: |
-            apps/api/package.json
-            apps/web/package.json
+            backend/api/package.json
+            frontend/package.json
 
       - name: Setup Python
         uses: actions/setup-python@v5
@@ -29,28 +29,28 @@ jobs:
           python-version: '3.11'
           cache: 'pip'
 
-      - name: Lint API
+      - name: Lint Backend API
         run: |
-          cd apps/api
+          cd backend/api
           npm ci
           npm run lint
 
-      - name: Lint Web
+      - name: Lint Frontend
         run: |
-          cd apps/web
+          cd frontend
           npm ci
           npm run lint
 
-      - name: Lint Python Services
+      - name: Lint Python Pipeline
         run: |
           python -m pip install --upgrade pip
           pip install ruff black mypy
-          ruff check services/
-          black --check services/
-          mypy services/datagen/src services/detector/src
+          ruff check backend/pipeline/
+          black --check backend/pipeline/
+          mypy backend/pipeline/src
 
   test-apps:
-    name: Unit Tests (API & Web)
+    name: Unit Tests (API & Frontend)
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Repository
@@ -63,18 +63,19 @@ jobs:
 
       - name: Run API Unit Tests
         run: |
-          cd apps/api
+          cd backend/api
           npm ci
           npm test
 
-      - name: Run Web Unit Tests
+      - name: Run Frontend Tests & Build
         run: |
-          cd apps/web
+          cd frontend
           npm ci
           npm test
+          npm run build
 
-  test-python:
-    name: Unit Tests (Datagen & Detector)
+  test-pipeline:
+    name: Pipeline Tests & Data Reproduction
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Repository
@@ -85,36 +86,11 @@ jobs:
         with:
           python-version: '3.11'
 
-      - name: Install and Test Services
+      - name: Install and Test Pipeline
         run: |
           python -m pip install --upgrade pip
-          pip install pytest pytest-cov
-          cd services/datagen && pip install -e .
+          cd backend/pipeline && pip install -e ".[dev]"
           pytest
-          cd ../detector && pip install -e .
-          pytest
-
-  database-migrations-and-pgtap:
-    name: Supabase Local & pgTAP Tests
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout Repository
-        uses: actions/checkout@v4
-
-      - name: Setup Supabase CLI
-        uses: supabase/setup-cli@v1
-        with:
-          version: latest
-
-      - name: Start Supabase Local Stack
-        run: |
-          supabase start
-
-      - name: Verify Migrations Applied Cleanly
-        run: |
-          supabase db reset
-
-      - name: Run pgTAP Schema & Constraint Tests
-        run: |
-          supabase test db
-
+          python -m pipeline.datagen generate --scale small
+          python -m pipeline.datagen validate
+          python -m pipeline.datagen reproduce

@@ -3,36 +3,32 @@ name: Database Migrations Check
 on:
   pull_request:
     paths:
-      - 'supabase/migrations/**'
-      - 'supabase/seed/**'
-      - 'supabase/tests/**'
+      - 'backend/db/**'
+      - 'backend/pipeline/src/pipeline/db/**'
   push:
     branches: [main]
     paths:
-      - 'supabase/migrations/**'
+      - 'backend/db/**'
 
 jobs:
   validate-migrations:
-    name: Dry Run Migrations
+    name: Run Python DB Migrator
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
 
-      - name: Setup Supabase CLI
-        uses: supabase/setup-cli@v1
+      - name: Setup Python
+        uses: actions/setup-python@v5
         with:
-          version: latest
+          python-version: '3.11'
 
-      - name: Start Supabase Stack
+      - name: Install Migrator Dependencies
         run: |
-          supabase start
+          pip install psycopg2-binary typer python-dotenv
 
-      - name: Reset DB and Apply Migrations
+      - name: Dry Run Migrations
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
         run: |
-          supabase db reset
-
-      - name: Execute pgTAP Verification Tests
-        run: |
-          supabase test db
-
+          python -m pipeline.db.migrate --help

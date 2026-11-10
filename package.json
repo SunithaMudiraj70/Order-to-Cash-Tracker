@@ -3,13 +3,13 @@
   "version": "0.1.0",
   "private": true,
   "workspaces": [
-    "apps/*"
+    "backend/api",
+    "frontend"
   ],
   "scripts": {
     "lint:api": "npm run --workspace=@o2c/api lint",
-    "lint:web": "npm run --workspace=@o2c/web lint",
+    "lint:web": "npm run --workspace=@o2c/frontend lint",
     "test:api": "npm run --workspace=@o2c/api test",
-    "test:web": "npm run --workspace=@o2c/web test"
+    "test:web": "npm run --workspace=@o2c/frontend test"
   }
 }
-
