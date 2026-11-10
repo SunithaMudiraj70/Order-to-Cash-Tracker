@@ -1,6 +1,9 @@
-// ==============================================================================
-// Logger Utility (Pino)
-// ==============================================================================
+/**
+ * PURPOSE: Configure and export application-wide Pino logger
+ * INPUT: NODE_ENV from config
+ * RETURNS: Logger instance
+ * ERRORS: none
+ */
 
 import pino from 'pino';
 import { env } from '../config/env.js';
@@ -19,4 +22,3 @@ export const logger = pino({
         }
       : undefined
 });
-

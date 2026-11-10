@@ -1,24 +1,30 @@
-// ==============================================================================
-// Server Entry Point
-// ==============================================================================
+/**
+ * PURPOSE: Server entry point binding Fastify app to configured host and port
+ * INPUT: none
+ * RETURNS: Promise<void>
+ * ERRORS: exits process on fatal startup error
+ */
 
 import { buildApp } from './app.js';
 import { env } from './config/env.js';
-import { logger } from './utils/logger.js';
 
-async function start() {
+/**
+ * PURPOSE: Start server listener
+ * INPUT: none
+ * RETURNS: Promise<void>
+ * ERRORS: exits on failure
+ */
+async function start(): Promise<void> {
   try {
     const app = await buildApp();
     await app.listen({
       port: env.API_PORT,
       host: env.API_HOST
     });
-    logger.info(`Server listening on http://${env.API_HOST}:${env.API_PORT}`);
-  } catch (err) {
-    logger.error(err, 'Failed to start server');
+  } catch (err: unknown) {
+    process.stderr.write(`Failed to start server: ${String(err)}\n`);
     process.exit(1);
   }
 }
 
 start();
-

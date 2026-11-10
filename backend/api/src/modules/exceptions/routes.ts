@@ -1,19 +1,62 @@
-// ==============================================================================
-// Module: Exceptions Routes
-// TODO (Step 3): Expose detected discrepancies and ground-truth validation comparisons
-// ==============================================================================
+/**
+ * PURPOSE: Fastify routes for exception findings inspection and detector evaluation
+ * INPUT: FastifyInstance
+ * RETURNS: void
+ * ERRORS: 400 bad request, 401 unauth, 403 forbidden, 404 not found
+ */
 
-import { FastifyPluginAsync } from 'fastify';
+import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
+import { exceptionsQuerySchema } from './schemas.js';
+import { listExceptions, getExceptionById, getEvaluationManifest } from './service.js';
+import { successResponse, errorResponse } from '../../utils/response.js';
+import { requireAuth, requireRole } from '../../middlewares/auth.middleware.js';
 
-export const exceptionRoutes: FastifyPluginAsync = async (fastify) => {
-  fastify.get('/', async (_request, reply) => {
-    // TODO: List detected revenue leakage exceptions
-    return reply.send({ data: [] });
+interface ExceptionParams {
+  id: string;
+}
+
+/**
+ * PURPOSE: Register exception endpoints with role authorization guards
+ * INPUT: app: FastifyInstance
+ * RETURNS: Promise<void>
+ * ERRORS: none
+ */
+export async function exceptionsRoutes(app: FastifyInstance): Promise<void> {
+  const agentGuard = [requireAuth, requireRole('support_agent', 'analyst', 'admin')];
+  const evalGuard = [requireAuth, requireRole('analyst', 'admin')];
+
+  app.get('/exceptions', { preHandler: agentGuard }, async (req: FastifyRequest, reply: FastifyReply) => {
+    try {
+      const query = exceptionsQuerySchema.parse(req.query);
+      const data = await listExceptions(query);
+      return reply.send(successResponse(data));
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Failed to query exceptions';
+      return reply.status(400).send(errorResponse(msg, 'QUERY_FAILED'));
+    }
   });
 
-  fastify.get('/ground-truth', async (_request, reply) => {
-    // TODO: Query gt.ground_truth benchmark set (analyst/admin only)
-    return reply.send({ data: [] });
+  app.get('/exceptions/evaluation', { preHandler: evalGuard }, async (_req: FastifyRequest, reply: FastifyReply) => {
+    try {
+      const data = await getEvaluationManifest();
+      return reply.send(successResponse(data));
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Failed to load evaluation manifest';
+      return reply.status(500).send(errorResponse(msg, 'EVAL_LOAD_FAILED'));
+    }
   });
-};
 
+  app.get<{ Params: ExceptionParams }>('/exceptions/:id', { preHandler: agentGuard }, async (req, reply) => {
+    try {
+      const id = String(req.params.id);
+      const finding = await getExceptionById(id);
+      if (!finding) {
+        return reply.status(404).send(errorResponse('Finding not found', 'NOT_FOUND'));
+      }
+      return reply.send(successResponse(finding));
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Failed to fetch finding';
+      return reply.status(400).send(errorResponse(msg, 'FETCH_FAILED'));
+    }
+  });
+}
