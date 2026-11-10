@@ -1,6 +1,9 @@
-// ==============================================================================
-// App Component: Root Providers
-// ==============================================================================
+/**
+ * PURPOSE: Root application component providing QueryClient and Router context
+ * INPUT: none
+ * RETURNS: JSX.Element
+ * ERRORS: none
+ */
 
 import React from 'react';
 import { BrowserRouter } from 'react-router-dom';
@@ -17,4 +20,3 @@ export const App: React.FC = () => {
     </QueryClientProvider>
   );
 };
-
