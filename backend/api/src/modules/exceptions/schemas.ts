@@ -1,6 +1,6 @@
 /**
  * PURPOSE: Zod validation schemas for exception filtering and evaluation endpoints
- * INPUT: query parameters and url parameters
+ * INPUT: query parameters, triage input, and url parameters
  * RETURNS: Validated types
  * ERRORS: ZodError
  */
@@ -15,4 +15,10 @@ export const exceptionsQuerySchema = z.object({
   entity_type: z.string().optional()
 });
 
+export const triageSchema = z.object({
+  status: z.enum(['OPEN', 'ACKNOWLEDGED', 'RESOLVED', 'FALSE_POSITIVE']),
+  note: z.string().optional()
+});
+
 export type ExceptionsQuery = z.infer<typeof exceptionsQuerySchema>;
+export type TriageInput = z.infer<typeof triageSchema>;

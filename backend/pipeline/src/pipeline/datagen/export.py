@@ -1,29 +1,26 @@
-"""Dataset export serializers for CSV tables and cryptographic manifests."""
+"""PURPOSE: Dataset export serializers for CSV tables, JSON tables, and manifests.
+INPUT: dataset dict, DatagenConfig
+RETURNS: dict[str, str] of filenames to sha256 checksums
+ERRORS: raises IOError on filesystem failure
+"""
 
 import hashlib
 import json
 import subprocess
 from datetime import UTC, datetime
+from pathlib import Path
 
 import pandas as pd
 
-from pipeline.datagen.config import DatagenConfig
+from pipeline.datagen.config import DatagenConfig, ScaleProfile
+from pipeline.datagen.export_sql import export_json_tables, export_sql_seed
 
 TABLE_FILE_MAP = {
-    "accounts": "account.csv",
-    "quotes": "quote.csv",
-    "quote_lines": "quote_line.csv",
-    "orders": "sales_order.csv",
-    "order_lines": "order_line.csv",
-    "shipments": "shipment.csv",
-    "shipment_lines": "shipment_line.csv",
-    "invoices": "invoice.csv",
-    "invoice_lines": "invoice_line.csv",
-    "payments": "payment.csv",
-    "allocations": "payment_allocation.csv",
-    "disputes": "dispute.csv",
-    "status_events": "status_event.csv",
-    "ground_truth": "ground_truth.csv",
+    "accounts": "account.csv", "quotes": "quote.csv", "quote_lines": "quote_line.csv",
+    "orders": "sales_order.csv", "order_lines": "order_line.csv", "shipments": "shipment.csv",
+    "shipment_lines": "shipment_line.csv", "invoices": "invoice.csv", "invoice_lines": "invoice_line.csv",
+    "payments": "payment.csv", "allocations": "payment_allocation.csv", "disputes": "dispute.csv",
+    "status_events": "status_event.csv", "ground_truth": "ground_truth.csv",
 }
 
 
@@ -34,16 +31,14 @@ def get_git_sha() -> str:
     ERRORS: returns 'unknown' on failure
     """
     try:
-        res = subprocess.run(
-            ["git", "rev-parse", "HEAD"], capture_output=True, text=True, check=True
-        )
+        res = subprocess.run(["git", "rev-parse", "HEAD"], capture_output=True, text=True, check=True)
         return res.stdout.strip()
     except (subprocess.SubprocessError, OSError):
         return "unknown"
 
 
 def export_dataset(dataset: dict[str, list], config: DatagenConfig) -> dict[str, str]:
-    """PURPOSE: Serialize dataset tables to CSV files and calculate sha256 checksums.
+    """PURPOSE: Serialize dataset tables to CSV, JSON, seed SQL, and calculate sha256 checksums.
     INPUT: dataset: dict[str, list of pydantic models], config: DatagenConfig
     RETURNS: dict[str, str] (filename -> sha256 checksum)
     ERRORS: raises IOError on filesystem failure
@@ -67,11 +62,13 @@ def export_dataset(dataset: dict[str, list], config: DatagenConfig) -> dict[str,
             dicts.append(d)
         df = pd.DataFrame(dicts)
         df.to_csv(file_path, index=False)
-
         raw_bytes = file_path.read_bytes()
-        digest = hashlib.sha256(raw_bytes).hexdigest()
-        checksums[filename] = digest
+        checksums[filename] = hashlib.sha256(raw_bytes).hexdigest()
         row_counts[filename] = len(rows)
+
+    export_json_tables(dataset, out_dir)
+    if config.scale == ScaleProfile.SMALL:
+        export_sql_seed(dataset, Path("backend/db/seed/seed_small.sql"))
 
     manifest_payload = {
         "seed": config.seed,
@@ -82,12 +79,9 @@ def export_dataset(dataset: dict[str, list], config: DatagenConfig) -> dict[str,
         "git_sha": get_git_sha(),
         "generated_at": datetime.now(UTC).isoformat(),
     }
-
-    manifest_path = manifest_dir / f"manifest_{config.scale.value}_{config.seed}.json"
-    with open(manifest_path, "w", encoding="utf-8") as f:
-        json.dump(manifest_payload, f, indent=2)
-
     with open(out_dir / "manifest.json", "w", encoding="utf-8") as f:
+        json.dump(manifest_payload, f, indent=2)
+    with open(manifest_dir / f"manifest_{config.scale.value}_{config.seed}.json", "w", encoding="utf-8") as f:
         json.dump(manifest_payload, f, indent=2)
 
     return checksums

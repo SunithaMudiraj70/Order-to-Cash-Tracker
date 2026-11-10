@@ -35,3 +35,4 @@ def build_invoice_lines(
         )
         idx += 1
     return inv_lines, subtotal, idx
+

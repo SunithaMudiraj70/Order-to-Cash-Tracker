@@ -2,7 +2,7 @@ export PYTHONPATH := backend/pipeline/src
 
 .DEFAULT_GOAL := help
 
-.PHONY: help setup migrate reset-db gen-small gen-full load detect validate test lint docs dev-api dev-web dev clean
+.PHONY: help setup migrate reset-db gen-small gen-full load detect validate test lint docs dev-api dev-web dev clean doctor smoke seed-sql
 
 help: ## Show this help message
 	@echo "Order-to-Cash Revenue Leakage & Process Delay Tracker"
@@ -27,6 +27,9 @@ gen-small: ## Generate small synthetic test dataset with known anomalies
 gen-full: ## Generate full scale synthetic dataset with known anomalies
 	python -m pipeline.datagen generate --scale full
 
+seed-sql: ## Generate on-demand database seed SQL script
+	python -m pipeline.datagen seed-sql --scale full
+
 load: ## Load generated datasets into database
 	python -m pipeline.loader load --scale small
 
@@ -44,6 +47,12 @@ test: ## Run test suites across api, frontend, and pipeline
 	@echo "--> Testing Python Pipeline..."
 	cd backend/pipeline && pytest
 	python -m pipeline.datagen reproduce
+
+doctor: ## Run system diagnostic doctor check
+	python scripts/doctor.py
+
+smoke: ## Run endpoint connectivity smoke tests directly and via proxy
+	python scripts/smoke_test.py
 
 lint: ## Run linting and typechecking across all projects
 	@echo "--> Linting Backend API..."

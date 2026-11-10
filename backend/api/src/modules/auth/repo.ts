@@ -22,3 +22,4 @@ export async function findProfileById(userId: string): Promise<UserProfile | nul
   `;
   return row || null;
 }
+

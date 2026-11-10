@@ -57,3 +57,4 @@ export async function queryEntityTimeline(
     ORDER BY event_ts ASC
   `;
 }
+

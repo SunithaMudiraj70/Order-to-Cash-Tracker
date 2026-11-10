@@ -28,6 +28,11 @@ flowchart LR
 3. **Anomaly Detector (`backend/pipeline/src/pipeline/detector`)**:
    - Discrete rules running SQL queries against operational tables (`o2c.*`).
    - Persists findings to `analytics.detector_findings` and evaluates against `gt.ground_truth`.
+   - Migration tracking is isolated in `o2c.migrations`.
+
+> [!NOTE]
+> **Database Schema Selection in Supabase Dashboard**:
+> Operational entities reside in `o2c`, `gt`, and `analytics` schemas (not `public`). In the Supabase dashboard Table Editor, use the schema dropdown at the top-left to select `o2c`, `gt`, or `analytics`. Direct client-side access is disabled via RLS and revoked anon privileges.
 4. **Analytical SQL Layer (`backend/db/migrations/0010_analytics_views.sql`)**:
    - Parameterized aging function `analytics.fn_aging(p_cutoff DATE)`.
    - Production views: `v_revenue_leakage`, `v_cycle_time_delays`, `v_unallocated_payments`, `v_open_disputes_vs_receivables`.

@@ -45,3 +45,4 @@ describe('apiClient', () => {
     await expect(apiRequest('/error')).rejects.toThrow('Request failed with status 500');
   });
 });
+

@@ -1,5 +1,5 @@
 /**
- * PURPOSE: Authentication page with credentials form and instant demo role switcher
+ * PURPOSE: Authentication page with credentials form and dev-only role switcher
  * INPUT: React component props
  * RETURNS: JSX.Element
  * ERRORS: catches and displays login errors
@@ -27,8 +27,8 @@ const DEMO_USERS: DemoAccount[] = [
 ];
 
 export const LoginPage: React.FC = () => {
-  const [email, setEmail] = useState('analyst@o2c-demo.com');
-  const [password, setPassword] = useState('DemoUserPass123!');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const { login, isLoading, error } = useSessionStore();
   const navigate = useNavigate();
 
@@ -44,8 +44,10 @@ export const LoginPage: React.FC = () => {
 
   const handleQuickLogin = async (demoEmail: string) => {
     setEmail(demoEmail);
+    const pwd = password || (import.meta.env.VITE_DEMO_PASSWORD as string | undefined) || 'DemoUserPassword2026!';
+    setPassword(pwd);
     try {
-      await login(demoEmail, password);
+      await login(demoEmail, pwd);
       navigate('/');
     } catch {
       // error captured in store
@@ -106,24 +108,29 @@ export const LoginPage: React.FC = () => {
             </button>
           </form>
 
-          <div className="mt-6 pt-6 border-t border-slate-700">
-            <div className="flex items-center space-x-2 text-xs font-medium text-slate-400 mb-3">
-              <KeyRound className="w-3.5 h-3.5" />
-              <span>Quick Demo Role Sign-In</span>
+          {import.meta.env.DEV && (
+            <div className="mt-6 pt-6 border-t border-slate-700">
+              <div className="flex items-center space-x-2 text-xs font-medium text-slate-400 mb-2">
+                <KeyRound className="w-3.5 h-3.5" />
+                <span>Quick Demo Role Sign-In (Dev Only)</span>
+              </div>
+              <p className="text-[11px] text-slate-400 mb-3">
+                Password: <span className="font-mono text-indigo-400 font-semibold select-all">DemoUserPassword2026!</span>
+              </p>
+              <div className="grid grid-cols-2 gap-2">
+                {DEMO_USERS.map((user) => (
+                  <button
+                    key={user.role}
+                    type="button"
+                    onClick={() => handleQuickLogin(user.email)}
+                    className={`text-xs px-2.5 py-1.5 rounded-md border font-medium transition text-left truncate ${user.color}`}
+                  >
+                    {user.label}
+                  </button>
+                ))}
+              </div>
             </div>
-            <div className="grid grid-cols-2 gap-2">
-              {DEMO_USERS.map((user) => (
-                <button
-                  key={user.role}
-                  type="button"
-                  onClick={() => handleQuickLogin(user.email)}
-                  className={`text-xs px-2.5 py-1.5 rounded-md border font-medium transition text-left truncate ${user.color}`}
-                >
-                  {user.label}
-                </button>
-              ))}
-            </div>
-          </div>
+          )}
         </div>
       </div>
     </div>

@@ -55,6 +55,8 @@ data/manifests/*
 # Supabase local files
 .supabase/
 supabase/.temp/
+backend/db/seed/seed_full.sql
+backend/db/seed/*.full.sql
 
 # IDE & OS files
 .DS_Store

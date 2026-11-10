@@ -1,6 +1,10 @@
-"""Injection of short payment remittance and severe overdue invoice anomalies."""
+"""PURPOSE: Injection of short payment remittance and severe overdue invoice anomalies.
+INPUT: invoices, allocations, sample_size, gt_idx, ts, as_of
+RETURNS: tuple[list[GroundTruthRow], int]
+ERRORS: none
+"""
 
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 from decimal import Decimal
 
 from pipeline.datagen import ids
@@ -53,18 +57,20 @@ def inject_long_overdue(
     sample_size: int,
     gt_idx: int,
     ts: datetime,
+    as_of: date = date(2026, 10, 31),
 ) -> tuple[list[GroundTruthRow], int]:
-    """PURPOSE: Force invoice due dates older than 90 days with uncollected balances.
-    INPUT: invoices, allocations, sample_size, gt_idx, ts
+    """PURPOSE: Select early invoices older than 90 days with uncollected balances.
+    INPUT: invoices, allocations, sample_size, gt_idx, ts, as_of
     RETURNS: tuple[list[GroundTruthRow], int]
     ERRORS: none
     """
     records: list[GroundTruthRow] = []
     curr_idx = gt_idx
-    target = invoices[sample_size * 3 : sample_size * 4]
+    # Filter candidate invoices whose invoice_date allows > 90 days overdue relative to as_of
+    candidates = [i for i in invoices if i.invoice_date <= as_of - timedelta(days=120)]
+    target = candidates[:sample_size] if len(candidates) >= sample_size else invoices[:sample_size]
     for inv in target:
-        inv.invoice_date = date(2026, 1, 15)
-        inv.due_date = date(2026, 2, 15)
+        inv.due_date = min(inv.due_date, as_of - timedelta(days=95))
         inv.paid_amount = Decimal("0.00")
         inv.balance_amount = inv.total_amount
         inv.status = "OVERDUE"

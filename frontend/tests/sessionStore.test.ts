@@ -62,3 +62,4 @@ describe('sessionStore', () => {
     expect(useSessionStore.getState().profile).toBeNull();
   });
 });
+

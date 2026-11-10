@@ -1,12 +1,16 @@
-"""Generation of invoices, lines, and baseline payment allocations."""
+"""PURPOSE: Generation of invoices, bill lines, remittances, and baseline payment allocations.
+INPUT: orders, order_lines, accounts, shipments, params, as_of
+RETURNS: tuple of (invoices, invoice_lines, payments, allocations, disputes)
+ERRORS: none
+"""
 
 from datetime import UTC, date, datetime, timedelta
 from decimal import Decimal
 
 import numpy as np
-from faker import Faker
 
 from pipeline.datagen import ids
+from pipeline.datagen.config import ScaleParameters
 from pipeline.datagen.derive import calc_balance_amount, calc_due_date, round_money
 from pipeline.datagen.invoicing import build_invoice_lines
 from pipeline.datagen.models import (
@@ -18,68 +22,47 @@ from pipeline.datagen.models import (
     PaymentAllocationRow,
     PaymentRow,
     SalesOrderRow,
+    ShipmentRow,
+)
+from pipeline.datagen.settlements_payments import (
+    PAYMENT_METHODS,
+    create_settlement_instalments,
+    create_unallocated_batch,
 )
 
-PAYMENT_METHODS = ["WIRE", "ACH", "CHECK", "CREDIT_CARD"]
 
-
-def _create_settlement(
-    rng: np.random.Generator,
-    o: SalesOrderRow,
-    inv_id: str,
-    inv_date: date,
-    due: date,
-    terms: int,
-    total: Decimal,
-    pay_idx: int,
-    alc_idx: int,
-) -> tuple[PaymentRow, PaymentAllocationRow]:
-    """PURPOSE: Create baseline remittance and allocation for settled invoice.
-    INPUT: rng, o, inv_id, inv_date, due, terms, total, pay_idx, alc_idx
-    RETURNS: tuple[PaymentRow, PaymentAllocationRow]
+def _build_milestone_invoice(
+    subtotal: Decimal, inv_idx: int, o: SalesOrderRow, inv_date: date, due: date, will_pay: bool, inv_created: datetime
+) -> InvoiceRow:
+    """PURPOSE: Construct secondary milestone billing invoice for an order.
+    INPUT: subtotal, inv_idx, o, inv_date, due, will_pay, inv_created
+    RETURNS: InvoiceRow
     ERRORS: none
     """
-    p_id = ids.payment_id(pay_idx)
-    pay_offset = int(rng.integers(1, max(2, terms - 2)))
-    pay_date = min(due, inv_date + timedelta(days=pay_offset))
-    pay_created = datetime.combine(pay_date, datetime.min.time(), tzinfo=UTC)
-    pay = PaymentRow(
-        payment_id=p_id,
-        account_id=o.account_id,
-        status="ALLOCATED",
-        payment_date=pay_date,
-        amount=total,
-        currency="USD",
-        method=str(rng.choice(PAYMENT_METHODS)),
-        reference_no=f"REF-{int(rng.integers(100000, 999999))}",
-        created_at=pay_created,
+    m_id = ids.invoice_id(inv_idx)
+    m_sub = round_money(subtotal * Decimal("0.10"))
+    m_tax = round_money(m_sub * Decimal("0.08"))
+    m_tot = m_sub + m_tax
+    return InvoiceRow(
+        invoice_id=m_id, order_id=o.order_id, account_id=o.account_id,
+        status="PAID" if will_pay else "ISSUED", invoice_date=inv_date + timedelta(days=1),
+        due_date=due + timedelta(days=1), subtotal=m_sub, tax=m_tax, total_amount=m_tot,
+        paid_amount=m_tot if will_pay else Decimal("0.00"), balance_amount=Decimal("0.00") if will_pay else m_tot,
+        currency="USD", created_at=inv_created
     )
-    alc = PaymentAllocationRow(
-        allocation_id=ids.allocation_id(alc_idx),
-        payment_id=p_id,
-        invoice_id=inv_id,
-        allocated_amount=total,
-        allocated_at=pay_created,
-        created_at=pay_created,
-    )
-    return pay, alc
 
 
 def generate_invoices_and_settlement(
     rng: np.random.Generator,
-    faker: Faker,
     orders: list[SalesOrderRow],
     order_lines: list[OrderLineRow],
     accounts: list[AccountRow],
-) -> tuple[
-    list[InvoiceRow],
-    list[InvoiceLineRow],
-    list[PaymentRow],
-    list[PaymentAllocationRow],
-    list[DisputeRow],
-]:
-    """PURPOSE: Generate invoices, bill lines, remittances, allocations, and disputes.
-    INPUT: rng: Generator, faker: Faker, orders, order_lines, accounts
+    shipments: list[ShipmentRow],
+    params: ScaleParameters,
+    as_of: date,
+) -> tuple[list[InvoiceRow], list[InvoiceLineRow], list[PaymentRow], list[PaymentAllocationRow], list[DisputeRow]]:
+    """PURPOSE: Generate parameterized invoices and remittances matching volume requirements.
+    INPUT: rng, orders, order_lines, accounts, shipments, params, as_of
     RETURNS: tuple of (invoices, invoice_lines, payments, allocations, disputes)
     ERRORS: none
     """
@@ -87,23 +70,22 @@ def generate_invoices_and_settlement(
     ol_by_order: dict[str, list[OrderLineRow]] = {}
     for ol in order_lines:
         ol_by_order.setdefault(ol.order_id, []).append(ol)
+    ship_by_order = {s.order_id: s for s in shipments}
 
-    invoices: list[InvoiceRow] = []
-    inv_lines: list[InvoiceLineRow] = []
-    payments: list[PaymentRow] = []
-    allocations: list[PaymentAllocationRow] = []
-    disputes: list[DisputeRow] = []
+    invoices, inv_lines, payments, allocations, disputes = [], [], [], [], []
     inv_idx, il_idx, pay_idx, alc_idx = 1, 1, 1, 1
-    as_of = date(2026, 10, 20)
+    extra_invoices_needed = max(0, params.target_invoices_count - len(orders))
 
-    for o in orders:
-        lines = ol_by_order.get(o.order_id, [])
-        inv_date = o.order_date + timedelta(days=int(rng.integers(5, 12)))
+    for idx, o in enumerate(orders):
+        ship = ship_by_order.get(o.order_id)
+        ship_date = ship.ship_date if ship else o.order_date + timedelta(days=4)
+        inv_date = ship_date + timedelta(days=int(rng.integers(0, 3)))
         terms = acc_terms.get(o.account_id, 30)
         due = calc_due_date(inv_date, terms)
         inv_id = ids.invoice_id(inv_idx)
         inv_created = datetime.combine(inv_date, datetime.min.time(), tzinfo=UTC)
 
+        lines = ol_by_order.get(o.order_id, [])
         b_lines, subtotal, il_idx = build_invoice_lines(lines, inv_id, inv_created, il_idx)
         inv_lines.extend(b_lines)
         tax = round_money(subtotal * Decimal("0.08"))
@@ -113,30 +95,27 @@ def generate_invoices_and_settlement(
         bal = calc_balance_amount(total, paid)
 
         if will_pay:
-            pay, alc = _create_settlement(
+            pays, alcs, pay_idx, alc_idx = create_settlement_instalments(
                 rng, o, inv_id, inv_date, due, terms, total, pay_idx, alc_idx
             )
-            payments.append(pay)
-            allocations.append(alc)
-            pay_idx += 1
-            alc_idx += 1
+            payments.extend(pays)
+            allocations.extend(alcs)
 
-        invoices.append(
-            InvoiceRow(
-                invoice_id=inv_id,
-                order_id=o.order_id,
-                account_id=o.account_id,
-                status="PAID" if will_pay else "ISSUED",
-                invoice_date=inv_date,
-                due_date=due,
-                subtotal=subtotal,
-                tax=tax,
-                total_amount=total,
-                paid_amount=paid,
-                balance_amount=bal,
-                currency="USD",
-                created_at=inv_created,
-            )
-        )
+        invoices.append(InvoiceRow(
+            invoice_id=inv_id, order_id=o.order_id, account_id=o.account_id,
+            status="PAID" if will_pay else ("OVERDUE" if due < as_of else "ISSUED"),
+            invoice_date=inv_date, due_date=due, subtotal=subtotal, tax=tax,
+            total_amount=total, paid_amount=paid, balance_amount=bal, currency="USD",
+            created_at=inv_created
+        ))
         inv_idx += 1
+
+        if idx < extra_invoices_needed:
+            invoices.append(_build_milestone_invoice(subtotal, inv_idx, o, inv_date, due, will_pay, inv_created))
+            inv_idx += 1
+
+    rem_payments = max(0, params.target_payments_count - len(payments))
+    if rem_payments > 0:
+        payments.extend(create_unallocated_batch(rng, accounts, rem_payments, as_of, pay_idx))
+
     return invoices, inv_lines, payments, allocations, disputes

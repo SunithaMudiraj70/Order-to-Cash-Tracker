@@ -20,6 +20,7 @@ const DelaysPage = lazy(() => import('../pages/DelaysPage').then((m) => ({ defau
 const ExceptionsPage = lazy(() => import('../pages/ExceptionsPage').then((m) => ({ default: m.ExceptionsPage })));
 const EvaluationPage = lazy(() => import('../pages/EvaluationPage').then((m) => ({ default: m.EvaluationPage })));
 const RecordsPage = lazy(() => import('../pages/RecordsPage').then((m) => ({ default: m.RecordsPage })));
+const AdminPage = lazy(() => import('../pages/AdminPage').then((m) => ({ default: m.AdminPage })));
 
 export interface RoleGuardProps {
   allowedRoles: UserRole[];
@@ -46,6 +47,7 @@ export const AppRoutes: React.FC = () => {
           <Route path="exceptions" element={<RoleGuard allowedRoles={['support_agent', 'analyst', 'admin']}><ExceptionsPage /></RoleGuard>} />
           <Route path="evaluation" element={<RoleGuard allowedRoles={['analyst', 'admin']}><EvaluationPage /></RoleGuard>} />
           <Route path="records" element={<RecordsPage />} />
+          <Route path="admin" element={<RoleGuard allowedRoles={['admin']}><AdminPage /></RoleGuard>} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Route>
       </Routes>

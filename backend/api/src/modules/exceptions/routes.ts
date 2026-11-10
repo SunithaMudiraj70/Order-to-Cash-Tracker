@@ -1,13 +1,13 @@
 /**
- * PURPOSE: Fastify routes for exception findings inspection and detector evaluation
+ * PURPOSE: Fastify routes for exception findings inspection, triage, and evaluation
  * INPUT: FastifyInstance
  * RETURNS: void
  * ERRORS: 400 bad request, 401 unauth, 403 forbidden, 404 not found
  */
 
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
-import { exceptionsQuerySchema } from './schemas.js';
-import { listExceptions, getExceptionById, getEvaluationManifest } from './service.js';
+import { exceptionsQuerySchema, triageSchema } from './schemas.js';
+import { listExceptions, getExceptionById, getEvaluationManifest, triageException } from './service.js';
 import { successResponse, errorResponse } from '../../utils/response.js';
 import { requireAuth, requireRole } from '../../middlewares/auth.middleware.js';
 
@@ -59,4 +59,21 @@ export async function exceptionsRoutes(app: FastifyInstance): Promise<void> {
       return reply.status(400).send(errorResponse(msg, 'FETCH_FAILED'));
     }
   });
+
+  app.post<{ Params: ExceptionParams; Body: unknown }>(
+    '/exceptions/:id/triage',
+    { preHandler: agentGuard },
+    async (req, reply) => {
+      try {
+        const id = String(req.params.id);
+        const body = triageSchema.parse(req.body);
+        const user = req.user as { email?: string };
+        const result = await triageException(id, body, user?.email || 'system');
+        return reply.status(201).send(successResponse(result));
+      } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : 'Triage failed';
+        return reply.status(400).send(errorResponse(msg, 'TRIAGE_FAILED'));
+      }
+    }
+  );
 }

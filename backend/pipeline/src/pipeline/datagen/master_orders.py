@@ -81,3 +81,4 @@ def generate_sales_orders(
         )
         o_idx += 1
     return orders, order_lines
+

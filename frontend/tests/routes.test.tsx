@@ -17,7 +17,7 @@ describe('RoleGuard route protection', () => {
     useSessionStore.setState({ profile: null, isAuthenticated: false });
 
     render(
-      <MemoryRouter initialEntries={['/protected']}>
+      <MemoryRouter initialEntries={['/protected']} future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
         <Routes>
           <Route path="/login" element={<div>Login Page</div>} />
           <Route
@@ -43,7 +43,7 @@ describe('RoleGuard route protection', () => {
     });
 
     render(
-      <MemoryRouter initialEntries={['/protected']}>
+      <MemoryRouter initialEntries={['/protected']} future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
         <Routes>
           <Route path="/" element={<div>Home Dashboard</div>} />
           <Route
@@ -69,7 +69,7 @@ describe('RoleGuard route protection', () => {
     });
 
     render(
-      <MemoryRouter initialEntries={['/protected']}>
+      <MemoryRouter initialEntries={['/protected']} future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
         <Routes>
           <Route
             path="/protected"
@@ -86,3 +86,4 @@ describe('RoleGuard route protection', () => {
     expect(screen.getByText('Protected Content')).toBeDefined();
   });
 });
+

@@ -1,4 +1,4 @@
-"""Database migration runner applying versioned SQL scripts."""
+"""Database migration runner applying versioned SQL scripts to secure schemas."""
 
 import hashlib
 from pathlib import Path
@@ -17,24 +17,35 @@ def calculate_checksum(file_path: Path) -> str:
     RETURNS: str (hex-encoded sha256)
     ERRORS: raises FileNotFoundError
     """
-    content = file_path.read_bytes()
-    return hashlib.sha256(content).hexdigest()
+    return hashlib.sha256(file_path.read_bytes()).hexdigest()
 
 
 def ensure_migration_table(conn) -> None:
-    """PURPOSE: Create o2c_migrations table if not present.
+    """PURPOSE: Create o2c.migrations table with RLS enabled and revoke anon privileges.
     INPUT: conn: psycopg2 connection
     RETURNS: None
     ERRORS: raises psycopg2.DatabaseError on SQL failure
     """
     with conn.cursor() as cur:
+        cur.execute("CREATE SCHEMA IF NOT EXISTS o2c;")
         cur.execute(
             """
-            CREATE TABLE IF NOT EXISTS public.o2c_migrations (
+            CREATE TABLE IF NOT EXISTS o2c.migrations (
                 version TEXT PRIMARY KEY,
                 checksum TEXT NOT NULL,
                 applied_at TIMESTAMPTZ NOT NULL DEFAULT timezone('utc', now())
             );
+            ALTER TABLE o2c.migrations ENABLE ROW LEVEL SECURITY;
+            DO $$
+            BEGIN
+                IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema='public' AND table_name='o2c_migrations') THEN
+                    INSERT INTO o2c.migrations (version, checksum, applied_at)
+                    SELECT version, checksum, applied_at FROM public.o2c_migrations
+                    ON CONFLICT (version) DO NOTHING;
+                    DROP TABLE public.o2c_migrations;
+                END IF;
+            END $$;
+            REVOKE ALL ON TABLE o2c.migrations FROM anon, authenticated, public;
             """
         )
     conn.commit()
@@ -47,7 +58,7 @@ def get_applied_migrations(conn) -> dict[str, str]:
     ERRORS: raises psycopg2.DatabaseError
     """
     with conn.cursor() as cur:
-        cur.execute("SELECT version, checksum FROM public.o2c_migrations;")
+        cur.execute("SELECT version, checksum FROM o2c.migrations;")
         return {row[0]: row[1] for row in cur.fetchall()}
 
 
@@ -62,26 +73,29 @@ def apply_migration_file(conn, file_path: Path, version: str, checksum: str) -> 
         cur.execute(sql)
         cur.execute(
             """
-            INSERT INTO public.o2c_migrations (version, checksum, applied_at)
-            VALUES (%s, %s, timezone('utc', now()));
+            INSERT INTO o2c.migrations (version, checksum, applied_at)
+            VALUES (%s, %s, timezone('utc', now()))
+            ON CONFLICT (version) DO UPDATE SET checksum = EXCLUDED.checksum;
             """,
             (version, checksum),
         )
     conn.commit()
 
 
-def reset_schemas(conn) -> None:
-    """PURPOSE: Drop o2c, gt, analytics schemas and o2c_migrations tracking table.
-    INPUT: conn: psycopg2 connection
-    RETURNS: None
-    ERRORS: raises psycopg2.DatabaseError
+def _process_file(conn, f: Path, applied: dict[str, str]) -> tuple[bool, str]:
+    """PURPOSE: Validate checksum and apply single migration file if pending.
+    INPUT: conn, f: Path, applied: dict
+    RETURNS: tuple[bool (is_new), str (status_message)]
+    ERRORS: raises ValueError on checksum mismatch, DatabaseError on SQL failure
     """
-    with conn.cursor() as cur:
-        cur.execute("DROP SCHEMA IF EXISTS o2c CASCADE;")
-        cur.execute("DROP SCHEMA IF EXISTS gt CASCADE;")
-        cur.execute("DROP SCHEMA IF EXISTS analytics CASCADE;")
-        cur.execute("DROP TABLE IF EXISTS public.o2c_migrations CASCADE;")
-    conn.commit()
+    version = f.name
+    checksum = calculate_checksum(f)
+    if version in applied:
+        if applied[version] != checksum:
+            raise ValueError(f"Checksum mismatch for {version}! Applied: {applied[version]} vs File: {checksum}")
+        return False, f"  [OK] {version} (already applied)"
+    apply_migration_file(conn, f, version, checksum)
+    return True, f"  [DONE] {version} applied successfully."
 
 
 @app.command()
@@ -92,44 +106,36 @@ def run(
     """PURPOSE: CLI entry point to apply or reset database migrations.
     INPUT: reset: bool, yes: bool
     RETURNS: None
-    ERRORS: raises SystemExit on error or cancellation
+    ERRORS: raises typer.Exit on error or cancellation
     """
-    if reset and not yes:
-        confirm = typer.confirm("Are you sure you want to drop schemas o2c, gt, and analytics?")
-        if not confirm:
-            typer.echo("Migration reset aborted.")
+    if reset:
+        if not yes and not typer.confirm("Drop schemas o2c, gt, and analytics?"):
             raise typer.Exit(code=0)
+        conn = get_connection()
+        with conn.cursor() as cur:
+            cur.execute("DROP SCHEMA IF EXISTS o2c, gt, analytics CASCADE; DROP TABLE IF EXISTS public.o2c_migrations CASCADE;")
+        conn.commit()
+        conn.close()
 
     conn = get_connection()
+    applied_count, skipped_count, failed_count = 0, 0, 0
     try:
-        if reset:
-            typer.echo("--> Dropping schemas o2c, gt, analytics and migrations table...")
-            reset_schemas(conn)
-
         ensure_migration_table(conn)
         applied = get_applied_migrations(conn)
-
-        files = sorted(MIGRATIONS_DIR.glob("*.sql"))
-        if not files:
-            typer.echo(f"No migration files found in {MIGRATIONS_DIR}")
-            return
-
-        for f in files:
-            version = f.name
-            checksum = calculate_checksum(f)
-            if version in applied:
-                if applied[version] != checksum:
-                    raise ValueError(
-                        f"Checksum mismatch for {version}! Applied: {applied[version]} vs Current: {checksum}"
-                    )
-                typer.echo(f"  [OK] {version} (already applied)")
-                continue
-
-            typer.echo(f"  [APPLY] Applying migration: {version}...")
-            apply_migration_file(conn, f, version, checksum)
-            typer.echo(f"  [DONE] {version} applied successfully.")
-
-        typer.echo("--> All migrations are up to date.")
+        for f in sorted(MIGRATIONS_DIR.glob("*.sql")):
+            try:
+                is_new, msg = _process_file(conn, f, applied)
+                typer.echo(msg)
+                if is_new:
+                    applied_count += 1
+                else:
+                    skipped_count += 1
+            except Exception as e:
+                failed_count += 1
+                typer.echo(f"  [FAIL] Migration {f.name} failed: {e}")
+                raise typer.Exit(code=1) from e
+        typer.echo(f"\nMigration Summary: Applied: {applied_count} | Skipped: {skipped_count} | Failed: {failed_count}")
+        typer.echo("Open Supabase Table Editor -> choose schema o2c / gt / analytics")
     finally:
         conn.close()
 

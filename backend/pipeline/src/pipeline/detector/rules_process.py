@@ -1,5 +1,8 @@
 """Discrete detection rules identifying shipment, underbilling, duplicate, and aging anomalies."""
 
+import os
+from datetime import date, timedelta
+
 from pipeline.detector.models import Finding
 
 
@@ -112,13 +115,15 @@ def detect_long_overdue(conn) -> list[Finding]:
     RETURNS: list[Finding]
     ERRORS: raises psycopg2.DatabaseError
     """
+    as_of = date.fromisoformat(os.getenv("DATAGEN_AS_OF_DATE", "2026-10-31"))
+    cutoff = as_of - timedelta(days=90)
     sql = """
     SELECT invoice_id, due_date, balance_amount
     FROM o2c.invoice
-    WHERE status = 'OVERDUE' AND due_date <= '2026-04-01';
+    WHERE status = 'OVERDUE' AND due_date <= %s;
     """
     with conn.cursor() as cur:
-        cur.execute(sql)
+        cur.execute(sql, (cutoff,))
         return [
             Finding(
                 finding_id=f"FND-LOD-{r[0]}",
@@ -129,3 +134,4 @@ def detect_long_overdue(conn) -> list[Finding]:
             )
             for r in cur.fetchall()
         ]
+

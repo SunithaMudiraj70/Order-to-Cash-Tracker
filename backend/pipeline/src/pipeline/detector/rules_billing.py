@@ -120,7 +120,7 @@ def detect_dispute_not_in_receivables(conn) -> list[Finding]:
     SELECT d.dispute_id, d.invoice_id, d.disputed_amount, i.balance_amount
     FROM o2c.dispute d
     JOIN o2c.invoice i ON d.invoice_id = i.invoice_id
-    WHERE i.balance_amount <= 0;
+    WHERE i.balance_amount <= 0 AND d.status = 'OPEN';
     """
     with conn.cursor() as cur:
         cur.execute(sql)

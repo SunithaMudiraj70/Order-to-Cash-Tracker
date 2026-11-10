@@ -94,3 +94,4 @@ def generate_quotes(
             )
         )
     return quotes, lines
+

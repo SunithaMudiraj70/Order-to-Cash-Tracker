@@ -41,7 +41,7 @@ export const useSessionStore = create<SessionState>((set) => ({
 
   logout: async () => {
     try {
-      await apiRequest<{ logged_out: boolean }>('/auth/logout', { method: 'POST' });
+      await apiRequest<{ logged_out: boolean }>('/auth/logout', { method: 'POST', body: JSON.stringify({}) });
     } finally {
       set({ profile: null, isAuthenticated: false, isLoading: false, error: null });
     }

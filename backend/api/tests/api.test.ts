@@ -38,7 +38,7 @@ describe('Order-to-Cash API Gateway Suite', () => {
       url: '/api/v1/auth/login',
       payload: {
         email: 'analyst@o2c-demo.com',
-        password: process.env.DEMO_USER_PASSWORD || 'DemoUserPass123!'
+        password: process.env.DEMO_USER_PASSWORD!
       }
     });
     expect(res.statusCode).toBe(200);
@@ -57,7 +57,7 @@ describe('Order-to-Cash API Gateway Suite', () => {
       url: '/api/v1/auth/login',
       payload: {
         email: 'customer@o2c-demo.com',
-        password: process.env.DEMO_USER_PASSWORD || 'DemoUserPass123!'
+        password: process.env.DEMO_USER_PASSWORD!
       }
     });
     expect(res.statusCode).toBe(200);

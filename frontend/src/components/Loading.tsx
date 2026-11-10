@@ -20,3 +20,4 @@ export const Loading: React.FC<LoadingProps> = ({ message = 'Loading data...' })
     </div>
   );
 };
+

@@ -1,7 +1,7 @@
 /**
- * PURPOSE: Service layer orchestrating exception filtering, pagination, and evaluation loading
- * INPUT: ExceptionsQuery, ID
- * RETURNS: Promise<{ items, next_cursor }>, Promise<FindingRecord | null>, Promise<unknown[]>
+ * PURPOSE: Service layer orchestrating exception filtering, pagination, and triage persistence
+ * INPUT: ExceptionsQuery, ID, TriageInput, actor
+ * RETURNS: Promise<{ items, next_cursor }>, Promise<FindingRecord | null>, Promise<TriageRecord>
  * ERRORS: throws Error on database error or file not found
  */
 
@@ -9,10 +9,13 @@ import fs from 'fs/promises';
 import path from 'path';
 import {
   FindingRecord,
+  TriageRecord,
+  insertStatusEvent,
+  insertTriageRecord,
   queryExceptionRowById,
   queryExceptionRows
 } from './repo.js';
-import { ExceptionsQuery } from './schemas.js';
+import { ExceptionsQuery, TriageInput } from './schemas.js';
 
 /**
  * PURPOSE: Build dynamic WHERE sql clause from filter parameters
@@ -55,6 +58,29 @@ export async function listExceptions(
  */
 export async function getExceptionById(id: string): Promise<FindingRecord | null> {
   return queryExceptionRowById(id);
+}
+
+/**
+ * PURPOSE: Record triage decision and emit audit status event
+ * INPUT: id: string, input: TriageInput, actor: string
+ * RETURNS: Promise<TriageRecord>
+ * ERRORS: throws Error on database failure
+ */
+export async function triageException(
+  id: string,
+  input: TriageInput,
+  actor: string
+): Promise<TriageRecord> {
+  const finding = await getExceptionById(id);
+  const record = await insertTriageRecord(id, input.status, input.note ?? null, actor);
+  const entityType = finding?.entity_type || 'INVOICE';
+  const entityId = finding?.entity_id || id;
+  await insertStatusEvent(entityType, entityId, input.status, actor, {
+    finding_id: id,
+    triage_id: record.triage_id,
+    note: input.note
+  });
+  return record;
 }
 
 /**

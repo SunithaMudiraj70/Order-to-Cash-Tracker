@@ -21,7 +21,7 @@ function renderWithProviders(ui: React.ReactElement) {
   });
   return render(
     <QueryClientProvider client={queryClient}>
-      <BrowserRouter>{ui}</BrowserRouter>
+      <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>{ui}</BrowserRouter>
     </QueryClientProvider>
   );
 }
@@ -30,7 +30,7 @@ describe('Frontend Component Suite', () => {
   it('renders login form and demo role buttons', () => {
     renderWithProviders(<LoginPage />);
     expect(screen.getByText('Order-to-Cash Tracker')).toBeDefined();
-    expect(screen.getByText('Quick Demo Role Sign-In')).toBeDefined();
+    expect(screen.getByText(/Quick Demo Role Sign-In/)).toBeDefined();
     expect(screen.getByText('Analyst')).toBeDefined();
     expect(screen.getByText('Customer')).toBeDefined();
   });

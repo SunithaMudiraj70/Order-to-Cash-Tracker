@@ -14,7 +14,8 @@ import {
   Timer,
   AlertOctagon,
   Award,
-  Database
+  Database,
+  Shield
 } from 'lucide-react';
 import { useSessionStore } from '../store/sessionStore';
 import { useUiStore } from '../store/uiStore';
@@ -31,7 +32,8 @@ export const Sidebar: React.FC = () => {
     { to: '/delays', label: 'Delays', icon: Timer, show: role !== 'customer' },
     { to: '/exceptions', label: 'Exceptions', icon: AlertOctagon, show: ['support_agent', 'analyst', 'admin'].includes(role || '') },
     { to: '/evaluation', label: 'Model Benchmark', icon: Award, show: ['analyst', 'admin'].includes(role || '') },
-    { to: '/records', label: 'Raw Records', icon: Database, show: true }
+    { to: '/records', label: 'Raw Records', icon: Database, show: true },
+    { to: '/admin', label: 'Admin Users', icon: Shield, show: role === 'admin' }
   ];
 
   return (

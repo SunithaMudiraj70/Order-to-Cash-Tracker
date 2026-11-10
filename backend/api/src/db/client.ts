@@ -1,6 +1,6 @@
 /**
- * PURPOSE: Configure and export raw PostgreSQL client using postgres (porsager)
- * INPUT: DATABASE_URL from env
+ * PURPOSE: Configure and export raw PostgreSQL client with performance tracking
+ * INPUT: DATABASE_URL and DEBUG from env
  * RETURNS: postgres.Sql client instance
  * ERRORS: throws Error if connection options fail to construct
  */
@@ -17,24 +17,12 @@ interface PgParsedOptions {
   ssl?: 'require' | 'allow' | 'prefer' | boolean;
 }
 
-/**
- * PURPOSE: Unquote percent-encoded character components safely
- * INPUT: str: string
- * RETURNS: string
- * ERRORS: none
- */
 function safeUnquote(str: string): string {
   return str.replace(/%([0-9a-fA-F]{2})/g, (_, hex) =>
     String.fromCharCode(parseInt(hex, 16))
   );
 }
 
-/**
- * PURPOSE: Parse database connection string into connection options
- * INPUT: urlStr: string
- * RETURNS: PgParsedOptions
- * ERRORS: throws Error on invalid URL format
- */
 export function parseDbUrl(urlStr: string): PgParsedOptions {
   const cleanUrl = urlStr.replace(/%(?![0-9a-fA-F]{2})/g, '%25');
   const u = new URL(cleanUrl);
@@ -50,7 +38,7 @@ export function parseDbUrl(urlStr: string): PgParsedOptions {
 
 const opts = parseDbUrl(env.DATABASE_URL);
 
-export const sql = postgres({
+const rawSql = postgres({
   host: opts.host,
   port: opts.port,
   database: opts.database,
@@ -61,3 +49,27 @@ export const sql = postgres({
   idle_timeout: 20,
   connect_timeout: 10
 });
+
+function logQueryMetrics(start: number, result: unknown, qStr: string): void {
+  const duration = Math.round(performance.now() - start);
+  const rows = Array.isArray(result) ? result.length : (result as { count?: number })?.count ?? 0;
+  const slow = duration > 500 ? ' [SLOW QUERY > 500ms]' : '';
+  const cleanQ = qStr.replace(/\s+/g, ' ').trim().slice(0, 100);
+  console.log(`[SQL DEBUG] ${duration}ms | rows: ${rows}${slow} | ${cleanQ}`);
+}
+
+export const sql = new Proxy(rawSql, {
+  apply(target, thisArg, args) {
+    if (!env.DEBUG) return Reflect.apply(target, thisArg, args);
+    const start = performance.now();
+    const p = Reflect.apply(target, thisArg, args);
+    const qStr = typeof args[0] === 'string' ? args[0] : (args[0] as TemplateStringsArray)?.join('?') || 'QUERY';
+    return p.then((res: unknown) => {
+      logQueryMetrics(start, res, qStr);
+      return res;
+    });
+  },
+  get(target, prop, receiver) {
+    return Reflect.get(target, prop, receiver);
+  }
+}) as typeof rawSql;

@@ -1,9 +1,13 @@
 """Create demo users via Supabase Admin API and provision matching o2c.profiles."""
 
 import os
+import sys
+from pathlib import Path
 import requests
 import typer
 from dotenv import load_dotenv
+
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "backend" / "pipeline" / "src"))
 from pipeline.db.connection import get_connection
 
 load_dotenv()
@@ -80,30 +84,44 @@ def upsert_profile(conn, user_id: str, role: str, full_name: str, email: str) ->
     conn.commit()
 
 
-def main() -> None:
-    """PURPOSE: CLI entry point to provision all demo users across roles.
-    INPUT: None
+def main(
+    email: str = typer.Option(None, "--email", "-e", help="Custom user email to create/update"),
+    password: str = typer.Option(None, "--password", "-p", help="Custom user password"),
+    role: str = typer.Option("analyst", "--role", "-r", help="User role (customer, sales_ops, support_agent, analyst, admin)"),
+    name: str = typer.Option("Custom User", "--name", "-n", help="Full name of user"),
+) -> None:
+    """PURPOSE: CLI entry point to provision all demo users or create custom account.
+    INPUT: Optional CLI options for email, password, role, name
     RETURNS: None
     ERRORS: raises ValueError if env missing
     """
     url = os.getenv("SUPABASE_URL")
     key = os.getenv("SUPABASE_SERVICE_ROLE_KEY")
-    pwd = os.getenv("DEMO_USER_PASSWORD", "DemoUserPassword2026!")
+    default_pwd = os.getenv("DEMO_USER_PASSWORD")
 
     if not url or not key:
         raise ValueError("SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY must be set in .env")
 
     conn = get_connection()
     try:
-        typer.echo("--> Provisioning demo users across roles...")
-        for role, email, name in ROLES:
-            user_id = create_or_get_user(url, key, email, pwd)
+        if email and password:
+            user_id = create_or_get_user(url, key, email, password)
             upsert_profile(conn, user_id, role, name, email)
-            typer.echo(f"  [USER] Provisioned: role={role:<14} email={email} id={user_id}")
+            typer.echo(f"  [USER CREATED/UPDATED] email={email} role={role} id={user_id}")
+            return
+
+        if not default_pwd:
+            raise ValueError("DEMO_USER_PASSWORD must be configured in .env for demo provisioning")
+
+        typer.echo("--> Provisioning default demo users across roles...")
+        for r, em, nm in ROLES:
+            user_id = create_or_get_user(url, key, em, default_pwd)
+            upsert_profile(conn, user_id, r, nm, em)
+            typer.echo(f"  [USER] Provisioned: role={r:<14} email={em} id={user_id}")
         typer.echo("--> All demo users provisioned successfully.")
     finally:
         conn.close()
 
 
 if __name__ == "__main__":
-    main()
+    typer.run(main)
