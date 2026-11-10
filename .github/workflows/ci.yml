@@ -7,6 +7,7 @@ on:
     branches: [main, master, develop]
 
 env:
+  NODE_ENV: test
   DATABASE_URL: postgresql://postgres:postgrespassword@localhost:5432/postgres
   SUPABASE_URL: http://127.0.0.1:54321
   SUPABASE_ANON_KEY: ci-placeholder-anon-key-test-matrix
@@ -27,16 +28,11 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 20
-          cache: 'npm'
-          cache-dependency-path: |
-            backend/api/package.json
-            frontend/package.json
 
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
-          cache: 'pip'
 
       - name: Lint and Typecheck Backend API
         run: |
@@ -132,6 +128,8 @@ jobs:
           psql postgresql://postgres:postgrespassword@localhost:5432/postgres -f backend/db/ci/00_supabase_stub.sql
           python -m pip install -e "backend/pipeline[dev]"
           python -m pipeline.db.migrate
+          python -m pipeline.datagen generate --scale small
+          python -m pipeline.loader load --scale small
           python scripts/create_demo_users.py
 
       - name: Run API Unit & Integration Tests

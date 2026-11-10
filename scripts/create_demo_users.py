@@ -77,14 +77,18 @@ def create_or_get_user(supabase_url: str, service_key: str, email: str, password
         raise
 
 
-def upsert_profile(conn, user_id: str, role: str, full_name: str, email: str) -> None:
+def upsert_profile(conn: Any, user_id: str, role: str, full_name: str, email: str) -> None:
     """PURPOSE: Upsert profile row into o2c.profiles for user.
     INPUT: conn: connection, user_id: str, role: str, full_name: str, email: str
     RETURNS: None
     ERRORS: raises psycopg2.DatabaseError
     """
-    account_id = "ACC-000001" if role == "customer" else None
+    account_id = None
     with conn.cursor() as cur:
+        if role == "customer":
+            cur.execute("SELECT 1 FROM o2c.account WHERE account_id = 'ACC-000001';")
+            if cur.fetchone():
+                account_id = "ACC-000001"
         cur.execute(
             """
             INSERT INTO o2c.profiles (id, role, full_name, email, account_id, updated_at)
